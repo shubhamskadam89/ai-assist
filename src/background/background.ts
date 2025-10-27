@@ -1,4 +1,5 @@
 // Background service worker for CodeMentor extension
+import { apiService } from '../services/apiService'
 console.log('CodeMentor background script loaded');
 
 // Handle extension installation
@@ -43,6 +44,40 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       });
       return true;
     
+    case 'GET_HINTS': {
+      const { code, language, problemId } = message.data || {}
+      ;(async () => {
+        try {
+          let effectiveCode: string | undefined = code
+          if (!effectiveCode && problemId) {
+            const store = await chrome.storage.local.get(['problemCodeMap'])
+            const map = store.problemCodeMap || {}
+            effectiveCode = map[problemId]?.code
+          }
+          const hints = await apiService.getHintsForCode(effectiveCode || '', language || 'unknown', problemId)
+          sendResponse(hints)
+        } catch (e) {
+          console.error('GET_HINTS failed:', e)
+          sendResponse([])
+        }
+      })()
+      return true
+    }
+
+    case 'SEND_CODE_TO_AI': {
+      const { code, language, problemId } = message.data || {}
+      ;(async () => {
+        try {
+          const analysis = await apiService.analyzeCode(code, language, problemId)
+          sendResponse(analysis)
+        } catch (e) {
+          console.error('SEND_CODE_TO_AI failed:', e)
+          sendResponse(null)
+        }
+      })()
+      return true
+    }
+    
     default:
       console.log('Unknown message type:', message.type);
   }
@@ -52,17 +87,25 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 function handleCodeCapture(data: any, _tabId?: number) {
   console.log('Code captured:', data);
   
-  // Store the latest code for this problem
-  chrome.storage.local.get(['currentProblem'], (result) => {
-    const currentProblem = result.currentProblem || {};
-    currentProblem[data.problemId] = {
+  // Store current problem info for popup/state
+  const currentProblem = {
+    id: data.problemId,
+    title: data.problemTitle,
+    language: data.language,
+    platform: data.platform
+  }
+  chrome.storage.local.set({ currentProblem })
+
+  // Store latest code for this problem in a map
+  chrome.storage.local.get(['problemCodeMap'], (result) => {
+    const problemCodeMap = result.problemCodeMap || {}
+    problemCodeMap[data.problemId] = {
       code: data.code,
       language: data.language,
       timestamp: Date.now()
-    };
-    
-    chrome.storage.local.set({ currentProblem });
-  });
+    }
+    chrome.storage.local.set({ problemCodeMap })
+  })
   
   // TODO: Send to AI service when backend is ready
   // For now, we'll just log it

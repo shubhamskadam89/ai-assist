@@ -213,12 +213,11 @@ export const useExtensionState = () => {
     }
   }, [])
 
-  const getHints = useCallback(async (code: string, language: string) => {
+  const getHints = useCallback(async (params: { code?: string; language?: string; problemId?: string }) => {
     try {
-      // TODO: Replace with actual API call
       const response = await chrome.runtime.sendMessage({
         type: 'GET_HINTS',
-        data: { code, language }
+        data: params
       })
       return response
     } catch (error) {

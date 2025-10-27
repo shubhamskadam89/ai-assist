@@ -12,7 +12,6 @@ import {
   EyeOff
 } from 'lucide-react'
 import { useExtensionState } from '../hooks/useExtensionState'
-import { mockHints } from '../../data/mockHints'
 
 type HintType = 'syntax' | 'logic' | 'performance' | 'best-practice'
 
@@ -26,7 +25,7 @@ interface Hint {
 }
 
 const HintPanel: React.FC = () => {
-  const { currentProblem, settings } = useExtensionState()
+  const { currentProblem, settings, getHints } = useExtensionState()
   const [hints, setHints] = useState<Hint[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [showAllHints, setShowAllHints] = useState(true)
@@ -41,18 +40,13 @@ const HintPanel: React.FC = () => {
   const loadHints = async () => {
     setIsLoading(true)
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 500))
-      
-      // For now, use mock data
-      const mockData = mockHints.map(hint => ({
-        ...hint,
-        timestamp: Date.now() - Math.random() * 10000
-      }))
-      
-      setHints(mockData)
+      const language = currentProblem?.language
+      const problemId = currentProblem?.id
+      const data = await getHints({ language, problemId })
+      setHints(Array.isArray(data) ? data : [])
     } catch (error) {
       console.error('Failed to load hints:', error)
+      setHints([])
     } finally {
       setIsLoading(false)
     }

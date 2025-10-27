@@ -22,6 +22,7 @@ class CodeCaptureService {
   private isOverlayVisible = false;
   private debounceTimer: number | null = null;
   private lastCapturedCode = '';
+  private enabled = true;
 
   constructor() {
     this.init();
@@ -38,6 +39,22 @@ class CodeCaptureService {
 
   private setup() {
     console.log('Setting up CodeMentor content script');
+    // Load initial enabled setting
+    try {
+      chrome.storage?.local.get(['settings'], (result) => {
+        if (result?.settings && typeof result.settings.enabled === 'boolean') {
+          this.enabled = result.settings.enabled
+          if (!this.enabled) {
+            // If disabled, ensure overlay is hidden
+            this.isOverlayVisible = false
+            if (this.overlayContainer) {
+              const content = this.overlayContainer.querySelector('.codementor-content') as HTMLElement
+              if (content) content.style.display = 'none'
+            }
+          }
+        }
+      })
+    } catch {}
     
     // Detect the coding platform
     this.detectPlatform();
@@ -53,6 +70,29 @@ class CodeCaptureService {
     
     // Listen for page changes (SPA navigation)
     this.observePageChanges();
+
+    // Listen for toggle messages
+    chrome.runtime.onMessage.addListener((msg) => {
+      if (msg?.type === 'TOGGLE_EXTENSION') {
+        this.enabled = !!msg.enabled
+        // Show/hide overlay content accordingly
+        if (this.overlayContainer) {
+          const content = this.overlayContainer.querySelector('.codementor-content') as HTMLElement
+          const toggleBtn = this.overlayContainer.querySelector('#codementor-toggle') as HTMLElement
+          if (content && toggleBtn) {
+            if (this.enabled) {
+              content.style.display = 'block'
+              toggleBtn.textContent = '−'
+              this.isOverlayVisible = true
+            } else {
+              content.style.display = 'none'
+              toggleBtn.textContent = '+'
+              this.isOverlayVisible = false
+            }
+          }
+        }
+      }
+    })
   }
 
   private detectPlatform(): void {
@@ -208,6 +248,7 @@ class CodeCaptureService {
   }
 
   private debouncedCodeCapture(): void {
+    if (!this.enabled) return;
     if (this.debounceTimer) {
       clearTimeout(this.debounceTimer);
     }
@@ -218,7 +259,7 @@ class CodeCaptureService {
   }
 
   private captureCode(): void {
-    if (!this.currentEditor) return;
+    if (!this.enabled || !this.currentEditor) return;
     
     const code = this.currentEditor.getValue();
     if (code === this.lastCapturedCode) return; // No change
@@ -713,6 +754,7 @@ class CodeCaptureService {
   private toggleOverlay(): void {
     if (!this.overlayContainer) return;
     
+    if (!this.enabled) return;
     this.isOverlayVisible = !this.isOverlayVisible;
     const content = this.overlayContainer.querySelector('.codementor-content') as HTMLElement;
     const toggleBtn = this.overlayContainer.querySelector('#codementor-toggle') as HTMLElement;

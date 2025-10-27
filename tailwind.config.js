@@ -2,8 +2,7 @@
 export default {
   content: [
     "./src/**/*.{js,ts,jsx,tsx}",
-    "./src/popup/index.html",
-    "./src/overlay/index.html"
+    "./src/popup/index.html"
   ],
   darkMode: 'class',
   theme: {

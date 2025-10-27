@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "postbuild": "rm -f dist/popup.html dist/overlay.html || true",
     "preview": "vite preview",
     "zip": "cd dist && zip -r ../codementor-extension.zip ."
   },
