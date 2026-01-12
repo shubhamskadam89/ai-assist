@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react'
-import { 
-  Moon, 
-  Sun, 
-  Bell, 
-  Shield, 
+import {
+  Moon,
+  Sun,
+  Bell,
+  Shield,
   Database,
   Trash2,
   Download,
@@ -105,14 +105,12 @@ const SettingsPanel: React.FC = () => {
   }> = ({ enabled, onChange }) => (
     <button
       onClick={() => onChange(!enabled)}
-      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-        enabled ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'
-      }`}
+      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${enabled ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'
+        }`}
     >
       <span
-        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-          enabled ? 'translate-x-6' : 'translate-x-1'
-        }`}
+        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${enabled ? 'translate-x-6' : 'translate-x-1'
+          }`}
       />
     </button>
   )
@@ -265,6 +263,7 @@ const SettingsPanel: React.FC = () => {
               <label className="px-3 py-1 text-sm bg-gray-600 text-white rounded-md hover:bg-gray-700 cursor-pointer transition-colors">
                 {isImporting ? 'Importing...' : 'Import'}
                 <input
+                  id="import-data-file"
                   type="file"
                   accept=".json"
                   onChange={handleImport}

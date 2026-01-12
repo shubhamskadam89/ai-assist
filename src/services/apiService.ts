@@ -26,6 +26,22 @@ export interface ProblemInfo {
   difficulty?: string
 }
 
+export interface SignalVector {
+  hasRecursion: boolean
+  hasDPArray: boolean
+  hasMemo: boolean
+  usesSort: boolean
+  loopDepth: number
+}
+
+export interface SignalRequest {
+  sessionId: string
+  problemId: string
+  language: string
+  signals: SignalVector
+}
+
+
 export interface CodeAnalysis {
   hints: Hint[]
   score: number
@@ -34,7 +50,7 @@ export interface CodeAnalysis {
 }
 
 class ApiService {
-  // private baseUrl: string = 'http://localhost:3001/api/v1'
+  private baseUrl: string = 'http://localhost:8080/api'
   // private apiKey: string | null = null
 
   constructor() {
@@ -48,43 +64,57 @@ class ApiService {
   //   this.apiKey = key
   // }
 
-  // private async makeRequest<T>(
-  //   endpoint: string, 
-  //   options: RequestInit = {}
-  // ): Promise<T> {
-  //   const url = `${this.baseUrl}${endpoint}`
-  //   const headers = {
-  //     'Content-Type': 'application/json',
-  //     ...(this.apiKey && { 'Authorization': `Bearer ${this.apiKey}` }),
-  //     ...options.headers
-  //   }
+  private async makeRequest<T>(
+    endpoint: string,
+    options: RequestInit = {}
+  ): Promise<T> {
+    const url = `${this.baseUrl}${endpoint}`
+    const headers = {
+      'Content-Type': 'application/json',
+      // ...(this.apiKey && { 'Authorization': `Bearer ${this.apiKey}` }),
+      ...options.headers
+    }
 
-  //   try {
-  //     const response = await fetch(url, {
-  //       ...options,
-  //       headers
-  //     })
+    try {
+      const response = await fetch(url, {
+        ...options,
+        headers
+      })
 
-  //     if (!response.ok) {
-  //       throw new Error(`API request failed: ${response.status} ${response.statusText}`)
-  //     }
+      if (!response.ok) {
+        throw new Error(`API request failed: ${response.status} ${response.statusText}`)
+      }
 
-  //     return await response.json()
-  //   } catch (error) {
-  //     console.error('API request failed:', error)
-  //     throw error
-  //   }
-  // }
+      return await response.json()
+    } catch (error) {
+      console.error('API request failed:', error)
+      throw error
+    }
+  }
+
+  async sendSignal(request: SignalRequest): Promise<any> {
+    try {
+      console.log('Sending signal:', request);
+      return await this.makeRequest<any>('/signal', {
+        method: 'POST',
+        body: JSON.stringify(request)
+      });
+    } catch (error) {
+      console.error('Failed to send signal:', error);
+      // Fallback or rethrow?
+      return { showHint: false };
+    }
+  }
 
   // Code Analysis API
   async getHintsForCode(code: string, language: string, problemId?: string): Promise<Hint[]> {
     try {
       // TODO: Replace with actual API call
       console.log('Getting hints for code:', { code: code.substring(0, 100) + '...', language, problemId })
-      
+
       // Simulate API delay
       await new Promise(resolve => setTimeout(resolve, 1000))
-      
+
       // Return mock data for now
       return this.getMockHints(code, language)
     } catch (error) {
@@ -97,10 +127,10 @@ class ApiService {
     try {
       // TODO: Replace with actual API call
       console.log('Analyzing code:', { code: code.substring(0, 100) + '...', language, problemId })
-      
+
       // Simulate API delay
       await new Promise(resolve => setTimeout(resolve, 1500))
-      
+
       // Return mock analysis
       return {
         hints: this.getMockHints(code, language),
@@ -123,10 +153,10 @@ class ApiService {
     try {
       // TODO: Replace with actual API call
       console.log('Saving progress:', { problemId, data })
-      
+
       // Simulate API delay
       await new Promise(resolve => setTimeout(resolve, 500))
-      
+
       // For now, just log the data
       console.log('Progress saved successfully')
     } catch (error) {
@@ -139,10 +169,10 @@ class ApiService {
     try {
       // TODO: Replace with actual API call
       console.log('Getting progress for user:', userId)
-      
+
       // Simulate API delay
       await new Promise(resolve => setTimeout(resolve, 300))
-      
+
       // Return mock progress data
       return this.getMockProgress()
     } catch (error) {
@@ -156,10 +186,10 @@ class ApiService {
     try {
       // TODO: Replace with actual API call
       console.log('Authenticating user:', email)
-      
+
       // Simulate API delay
       await new Promise(resolve => setTimeout(resolve, 1000))
-      
+
       // Return mock authentication
       return {
         token: 'mock-jwt-token',
@@ -180,10 +210,10 @@ class ApiService {
     try {
       // TODO: Replace with actual API call
       console.log('Getting user profile')
-      
+
       // Simulate API delay
       await new Promise(resolve => setTimeout(resolve, 500))
-      
+
       // Return mock user profile
       return {
         id: 'user-123',
@@ -205,9 +235,9 @@ class ApiService {
     try {
       // TODO: Replace with actual WebSocket endpoint
       const wsUrl = 'ws://localhost:3001/ws'
-      
+
       console.log('Connecting to WebSocket:', wsUrl)
-      
+
       // For now, return null (WebSocket not implemented)
       return null
     } catch (error) {

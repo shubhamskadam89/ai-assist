@@ -9,6 +9,15 @@ interface CodeEditor {
   off: (event: string, callback: Function) => void;
 }
 
+
+interface SignalVector {
+  hasRecursion: boolean;
+  hasDPArray: boolean;
+  hasMemo: boolean;
+  usesSort: boolean;
+  loopDepth: number;
+}
+
 interface ProblemInfo {
   id: string;
   title: string;
@@ -16,13 +25,16 @@ interface ProblemInfo {
   platform: string;
 }
 
+
 class CodeCaptureService {
   private currentEditor: CodeEditor | null = null;
   private overlayContainer: HTMLElement | null = null;
   private isOverlayVisible = false;
-  private debounceTimer: number | null = null;
+  private pollingTimer: number | null = null;
   private lastCapturedCode = '';
   private enabled = true;
+  private sessionId: string | null = null;
+
 
   constructor() {
     this.init();
@@ -39,6 +51,8 @@ class CodeCaptureService {
 
   private setup() {
     console.log('Setting up CodeMentor content script');
+    // Generate stable session ID
+    this.sessionId = 'session-' + Math.random().toString(36).slice(2);
     // Load initial enabled setting
     try {
       chrome.storage?.local.get(['settings'], (result) => {
@@ -54,23 +68,24 @@ class CodeCaptureService {
           }
         }
       })
-    } catch {}
-    
+    } catch { }
+
     // Detect the coding platform
     this.detectPlatform();
-    
+
     // Find and setup code editor
     this.findCodeEditor();
-    
+
     // Create overlay UI
     this.createOverlay();
-    
+
     // Setup keyboard shortcuts
     this.setupKeyboardShortcuts();
-    
+
     // Listen for page changes (SPA navigation)
     this.observePageChanges();
 
+    // Listen for toggle messages
     // Listen for toggle messages
     chrome.runtime.onMessage.addListener((msg) => {
       if (msg?.type === 'TOGGLE_EXTENSION') {
@@ -84,21 +99,30 @@ class CodeCaptureService {
               content.style.display = 'block'
               toggleBtn.textContent = '−'
               this.isOverlayVisible = true
+              this.startPolling();
             } else {
               content.style.display = 'none'
               toggleBtn.textContent = '+'
               this.isOverlayVisible = false
+              this.stopPolling();
             }
           }
         }
+      } else if (msg?.type === 'HINT_UPDATE') {
+        this.updateHints(msg.data);
       }
-    })
+    });
+
+    // Start polling if enabled
+    if (this.enabled) {
+      this.startPolling();
+    }
   }
 
   private detectPlatform(): void {
     const hostname = window.location.hostname;
     let platform = 'unknown';
-    
+
     if (hostname.includes('leetcode.com')) {
       platform = 'leetcode';
     } else if (hostname.includes('geeksforgeeks.org')) {
@@ -110,7 +134,7 @@ class CodeCaptureService {
     } else if (hostname.includes('atcoder.jp')) {
       platform = 'atcoder';
     }
-    
+
     console.log('Detected platform:', platform);
   }
 
@@ -121,43 +145,55 @@ class CodeCaptureService {
       this.setupMonacoEditor(monacoEditor);
       return;
     }
-    
+
     // Try to find CodeMirror editor
     const codeMirrorEditor = this.findCodeMirrorEditor();
     if (codeMirrorEditor) {
       this.setupCodeMirrorEditor(codeMirrorEditor);
       return;
     }
-    
+
     // Try to find textarea-based editor
     const textareaEditor = this.findTextareaEditor();
     if (textareaEditor) {
       this.setupTextareaEditor(textareaEditor);
       return;
     }
-    
+
     console.log('No code editor found, retrying in 1 second...');
     setTimeout(() => this.findCodeEditor(), 1000);
   }
 
   private findMonacoEditor(): HTMLElement | null {
-    // Look for Monaco editor container
-    const monacoContainer = document.querySelector('.monaco-editor') as HTMLElement;
-    if (monacoContainer) {
-      return monacoContainer;
-    }
-    
-    // Look for Monaco editor in iframe
-    const iframe = document.querySelector('iframe[src*="monaco"]') as HTMLIFrameElement;
-    if (iframe) {
-      return iframe.contentDocument?.querySelector('.monaco-editor') as HTMLElement || null;
-    }
-    
+    // Look for standard Monaco editor class
+    const monacoEditor = document.querySelector('.monaco-editor');
+    if (monacoEditor) return monacoEditor as HTMLElement;
+
+    // Look for LeetCode specific containers or view-lines
+    const viewLines = document.querySelector('.view-lines');
+    if (viewLines) return viewLines.closest('.monaco-editor') as HTMLElement || viewLines as HTMLElement;
+
+    // Look for data attributes
+    const dataEditor = document.querySelector('[data-cy="code-editor"]');
+    if (dataEditor) return dataEditor as HTMLElement;
+
     return null;
   }
 
   private findCodeMirrorEditor(): HTMLElement | null {
-    return document.querySelector('.CodeMirror') as HTMLElement;
+    // CodeMirror 5
+    const cm5 = document.querySelector('.CodeMirror');
+    if (cm5) return cm5 as HTMLElement;
+
+    // CodeMirror 6
+    const cm6 = document.querySelector('.cm-content');
+    if (cm6) return cm6 as HTMLElement;
+
+    // Generic contenteditable (fallback)
+    const generic = document.querySelector('[contenteditable="true"]');
+    if (generic && generic.closest('.editor-scrollable')) return generic as HTMLElement;
+
+    return null;
   }
 
   private findTextareaEditor(): HTMLTextAreaElement | null {
@@ -165,8 +201,8 @@ class CodeCaptureService {
     const textareas = document.querySelectorAll('textarea');
     for (const textarea of textareas) {
       if (textarea.placeholder?.toLowerCase().includes('code') ||
-          textarea.className.includes('code') ||
-          textarea.id.includes('code')) {
+        textarea.className.includes('code') ||
+        textarea.id.includes('code')) {
         return textarea;
       }
     }
@@ -174,33 +210,76 @@ class CodeCaptureService {
   }
 
   private setupMonacoEditor(element: HTMLElement): void {
-    console.log('Setting up Monaco editor');
-    
-    // Monaco editor is typically available globally
-    const monaco = (window as any).monaco;
-    if (monaco) {
-      const editor = monaco.editor.getEditors()[0];
-      if (editor) {
-        this.currentEditor = {
-          element,
-          getValue: () => editor.getValue(),
-          setValue: (value: string) => editor.setValue(value),
-          on: (event: string, callback: Function) => {
-            if (event === 'change') {
-              editor.onDidChangeModelContent(() => callback());
-            }
-          },
-          off: () => {} // Monaco doesn't have off method
-        };
-        
-        this.setupEditorListeners();
-      }
-    }
+    console.log('Setting up Monaco editor (DOM Scraping Mode)');
+
+    // In a content script, we cannot access window.monaco due to isolation.
+    // We must scrape the DOM or inject a script. For read-only signals, scraping is sufficient.
+
+    this.currentEditor = {
+      element,
+      getValue: () => {
+        // Scrape text from .view-line elements
+        // They are usually divs with text content
+        const lines = element.querySelectorAll('.view-line');
+        if (lines.length > 0) {
+          // Join text content of lines. 
+          // Note: Monaco renders parts of lines in spans. textContent of the line div usually works.
+          // But we need to be careful about ordering (top style attribute).
+          // Usually querySelectorAll returns in document order, which is correct for lines.
+          return Array.from(lines).map(line => {
+            // Ensure we get text (some versions use structure like <span><span>code</span></span>)
+            return line.textContent || '';
+          }).join('\n');
+        }
+
+        // Fallback: Try to find a textarea usage?
+        const textarea = element.querySelector('textarea.inputarea') as HTMLTextAreaElement;
+        if (textarea) return textarea.value;
+
+        return '';
+      },
+      setValue: (_value: string) => {
+        console.warn('setValue not supported in scraping mode');
+      },
+      on: (_event: string, _callback: Function) => {
+        // We cannot listen to Monaco model events directly.
+        // We will rely on our polling mechanism in startPolling().
+      },
+      off: (_event: string, _callback: Function) => { }
+    };
+
+    // We don't need setupEditorListeners anymore since we rely on polling
+    console.log('Monaco editor setup complete');
   }
 
   private setupCodeMirrorEditor(element: HTMLElement): void {
-    console.log('Setting up CodeMirror editor');
-    
+    console.log('Setting up CodeMirror/Generic editor');
+
+    // Check if it's CM6 or generic contenteditable
+    if (element.classList.contains('cm-content') || element.getAttribute('contenteditable') === 'true') {
+      this.currentEditor = {
+        element,
+        getValue: () => {
+          // For CM6, text is in .cm-line elements
+          const lines = element.querySelectorAll('.cm-line');
+          if (lines.length > 0) {
+            return Array.from(lines).map(line => line.textContent || '').join('\n');
+          }
+          // Fallback for generic contenteditable
+          return element.innerText || element.textContent || '';
+        },
+        setValue: (_value: string) => {
+          console.warn('setValue not supported for scraped editor');
+        },
+        on: () => { },
+        off: () => { }
+      };
+      console.log('CodeMirror 6 / Generic setup complete');
+      this.setupEditorListeners();
+      return;
+    }
+
+    // CodeMirror 5 (Legacy)
     const codeMirror = (element as any).CodeMirror;
     if (codeMirror) {
       this.currentEditor = {
@@ -210,14 +289,14 @@ class CodeCaptureService {
         on: (event: string, callback: Function) => codeMirror.on(event, callback),
         off: (event: string, callback: Function) => codeMirror.off(event, callback)
       };
-      
+
       this.setupEditorListeners();
     }
   }
 
   private setupTextareaEditor(element: HTMLTextAreaElement): void {
     console.log('Setting up textarea editor');
-    
+
     this.currentEditor = {
       element,
       getValue: () => element.value,
@@ -233,55 +312,109 @@ class CodeCaptureService {
         }
       }
     };
-    
+
     this.setupEditorListeners();
   }
 
   private setupEditorListeners(): void {
     if (!this.currentEditor) return;
-    
-    this.currentEditor.on('change', () => {
-      this.debouncedCodeCapture();
-    });
-    
-    console.log('Editor listeners setup complete');
+
+    // We don't need change listeners anymore since we are polling
+    // But we might want to reset the polling timer on activity to avoid idle waste?
+    // For now, simple polling is enough as per requirement.
+    console.log('Editor listeners setup complete (Polling mode)');
   }
 
-  private debouncedCodeCapture(): void {
-    if (!this.enabled) return;
-    if (this.debounceTimer) {
-      clearTimeout(this.debounceTimer);
+  private startPolling(): void {
+    if (this.pollingTimer) clearInterval(this.pollingTimer);
+
+    // Poll every 5 seconds
+    this.pollingTimer = window.setInterval(() => {
+      this.captureSignal();
+    }, 5000);
+  }
+
+  private stopPolling(): void {
+    if (this.pollingTimer) {
+      clearInterval(this.pollingTimer);
+      this.pollingTimer = null;
     }
-    
-    this.debounceTimer = window.setTimeout(() => {
-      this.captureCode();
-    }, 500); // 500ms debounce
   }
 
-  private captureCode(): void {
+  private captureSignal(): void {
     if (!this.enabled || !this.currentEditor) return;
-    
-    const code = this.currentEditor.getValue();
-    if (code === this.lastCapturedCode) return; // No change
-    
-    this.lastCapturedCode = code;
-    
-    const problemInfo = this.extractProblemInfo();
-    
-    // Send to background script
-    chrome.runtime.sendMessage({
-      type: 'CAPTURE_CODE',
-      data: {
-        code,
-        language: this.detectLanguage(),
-        problemId: problemInfo.id,
-        problemTitle: problemInfo.title,
-        platform: problemInfo.platform,
-        timestamp: Date.now()
+
+    try {
+      const code = this.currentEditor.getValue();
+      // Optimization: Skip if code matches last captured.
+      if (code === this.lastCapturedCode) return;
+
+      this.lastCapturedCode = code;
+
+      const problemInfo = this.extractProblemInfo();
+      const signals = this.extractSignals(code);
+
+      // Check if extension context is valid
+      if (!chrome.runtime?.id) {
+        console.warn('Extension context invalidated, stopping polling');
+        this.stopPolling();
+        return;
       }
-    });
-    
-    console.log('Code captured and sent:', { code: code.substring(0, 100) + '...' });
+
+      // Send to background script
+      chrome.runtime.sendMessage({
+        type: 'CAPTURE_SIGNAL',
+        data: {
+          sessionId: this.sessionId,
+          problemId: problemInfo.id,
+          language: this.detectLanguage(),
+          signals: signals
+        }
+      });
+
+      console.log('Signal captured and sent:', signals);
+    } catch (error) {
+      console.error('Error during signal capture:', error);
+      // Stop polling if we hit a critical error (like context invalidation)
+      if (error instanceof Error && error.message.includes('Extension context invalidated')) {
+        this.stopPolling();
+      }
+    }
+  }
+
+  private extractSignals(code: string): SignalVector {
+    // Basic heuristics
+    const hasRecursion = /func\s+(\w+).*?\1\(|def\s+(\w+).*?\2\(|void\s+(\w+).*?\3\(|int\s+(\w+).*?\4\(/.test(code);
+    const hasDPArray = /dp\[|memo\[|cache\[/.test(code) || /vector<.*> dp/.test(code) || /int\[\].*dp/.test(code);
+    const hasMemo = /memo\s*=|cache\s*=|Map<.*>/.test(code);
+    const usesSort = /\.sort\(|sorted\(|Arrays\.sort\(|Collections\.sort\(/.test(code);
+
+    // Estimate loop depth
+    let maxDepth = 0;
+    let currentDepth = 0;
+    const lines = code.split('\n');
+
+    for (const line of lines) {
+      // Naive counting of braces
+      const openBraces = (line.match(/\{/g) || []).length;
+      const closeBraces = (line.match(/\}/g) || []).length;
+
+      currentDepth += openBraces;
+      currentDepth -= closeBraces;
+
+      if (currentDepth > maxDepth) maxDepth = currentDepth;
+    }
+
+    // Fallback: If no braces (Python?), look for indentation? 
+    // This is tricky. For now, rely on minimal signals.
+
+    return {
+      hasRecursion,
+      hasDPArray,
+      hasMemo,
+      usesSort,
+      loopDepth: Math.min(maxDepth, 5) // Cap at 5
+    };
   }
 
   private extractProblemInfo(): ProblemInfo {
@@ -290,24 +423,37 @@ class CodeCaptureService {
     let id = 'unknown';
     let title = 'Unknown Problem';
     let difficulty = 'unknown';
-    
+
     if (hostname.includes('leetcode.com')) {
-      const titleElement = document.querySelector('[data-cy="question-title"]') || 
-                          document.querySelector('.css-v3d350');
+      // Robust regex that handles potential missing trailing slash
+      const urlMatch = window.location.pathname.match(/problems\/([^/]+)/);
+      const slug = urlMatch?.[1] || 'unknown';
+
+      // Map slug → problem number (TEMP: hardcode Coin Change)
+      // Coin Change = 322
+      if (slug === 'coin-change') {
+        id = 'leetcode_322';
+      } else if (slug === 'two-sum') {
+        id = 'leetcode_1';
+      } else {
+        id = `leetcode_${slug}`;
+      }
+
+      const titleElement = document.querySelector('[data-cy="question-title"]') ||
+        document.querySelector('.css-v3d350');
       title = titleElement?.textContent?.trim() || 'LeetCode Problem';
-      id = `leetcode_${title.toLowerCase().replace(/\s+/g, '_')}`;
     } else if (hostname.includes('geeksforgeeks.org')) {
       const titleElement = document.querySelector('.problem-statement h1') ||
-                          document.querySelector('.gfg_h1');
+        document.querySelector('.gfg_h1');
       title = titleElement?.textContent?.trim() || 'GeeksforGeeks Problem';
       id = `gfg_${title.toLowerCase().replace(/\s+/g, '_')}`;
     } else if (hostname.includes('hackerrank.com')) {
       const titleElement = document.querySelector('.challenge-title') ||
-                          document.querySelector('h1');
+        document.querySelector('h1');
       title = titleElement?.textContent?.trim() || 'HackerRank Problem';
       id = `hackerrank_${title.toLowerCase().replace(/\s+/g, '_')}`;
     }
-    
+
     return {
       id,
       title,
@@ -319,20 +465,20 @@ class CodeCaptureService {
   private detectLanguage(): string {
     // Try to detect programming language from editor or page
     const code = this.currentEditor?.getValue() || '';
-    
+
     if (code.includes('def ') || code.includes('import ')) return 'python';
     if (code.includes('function ') || code.includes('const ') || code.includes('let ')) return 'javascript';
     if (code.includes('public class') || code.includes('import java')) return 'java';
     if (code.includes('#include') || code.includes('using namespace')) return 'cpp';
     if (code.includes('package ') || code.includes('func ')) return 'go';
-    
+
     return 'unknown';
   }
 
   private injectStyles(): void {
     // Check if styles are already injected
     if (document.getElementById('codementor-styles')) return;
-    
+
     // Create style element
     const styleElement = document.createElement('style');
     styleElement.id = 'codementor-styles';
@@ -660,7 +806,7 @@ class CodeCaptureService {
         background: #94a3b8;
       }
     `;
-    
+
     document.head.appendChild(styleElement);
     console.log('CodeMentor styles injected');
   }
@@ -668,7 +814,7 @@ class CodeCaptureService {
   private createOverlay(): void {
     // Inject CSS styles
     this.injectStyles();
-    
+
     // Create overlay container
     this.overlayContainer = document.createElement('div');
     this.overlayContainer.id = 'codementor-overlay';
@@ -685,14 +831,9 @@ class CodeCaptureService {
             <button class="tab-btn" data-tab="settings">Settings</button>
           </div>
           <div class="tab-content" id="hints-content">
-            <div class="hints-list">
+            <div class="hints-list" id="hints-list-container">
               <div class="hint-item">
-                <div class="hint-type syntax">Syntax</div>
-                <div class="hint-message">Looks like you forgot a semicolon at the end of line 5.</div>
-              </div>
-              <div class="hint-item">
-                <div class="hint-type logic">Logic</div>
-                <div class="hint-message">Check your loop bounds; you may be iterating one step too far.</div>
+                <div class="hint-message">Analyze code to get real-time hints...</div>
               </div>
             </div>
           </div>
@@ -723,24 +864,24 @@ class CodeCaptureService {
         </div>
       </div>
     `;
-    
+
     document.body.appendChild(this.overlayContainer);
-    
+
     // Setup overlay event listeners
     this.setupOverlayListeners();
-    
+
     console.log('Overlay created and attached');
   }
 
   private setupOverlayListeners(): void {
     if (!this.overlayContainer) return;
-    
+
     // Toggle button
     const toggleBtn = this.overlayContainer.querySelector('#codementor-toggle');
     toggleBtn?.addEventListener('click', () => {
       this.toggleOverlay();
     });
-    
+
     // Tab buttons
     const tabBtns = this.overlayContainer.querySelectorAll('.tab-btn');
     tabBtns.forEach(btn => {
@@ -751,14 +892,45 @@ class CodeCaptureService {
     });
   }
 
+  private updateHints(hintResponse: any): void {
+    console.log('HINT RESPONSE RECEIVED:', hintResponse);
+    const container = this.overlayContainer?.querySelector('#hints-list-container');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    if (!hintResponse || !hintResponse.showHint) {
+      container.innerHTML = '<div class="hint-item"><div class="hint-message">No specific hints yet. Keep going!</div></div>';
+      return;
+    }
+
+    const div = document.createElement('div');
+    div.className = 'hint-item';
+
+    const typeDiv = document.createElement('div');
+    typeDiv.className = `hint-type ${hintResponse.level?.toLowerCase() || 'info'}`;
+    typeDiv.textContent = hintResponse.level || 'Hint';
+
+    const msgDiv = document.createElement('div');
+    msgDiv.className = 'hint-message';
+    msgDiv.textContent = hintResponse.message || '';
+
+    div.appendChild(typeDiv);
+    div.appendChild(msgDiv);
+    container.appendChild(div);
+
+    // Auto-show overlay if high priority?
+    // if (hintResponse.level === 'CRITICAL' && !this.isOverlayVisible) { ... }
+  }
+
   private toggleOverlay(): void {
     if (!this.overlayContainer) return;
-    
+
     if (!this.enabled) return;
     this.isOverlayVisible = !this.isOverlayVisible;
     const content = this.overlayContainer.querySelector('.codementor-content') as HTMLElement;
     const toggleBtn = this.overlayContainer.querySelector('#codementor-toggle') as HTMLElement;
-    
+
     if (this.isOverlayVisible) {
       content.style.display = 'block';
       toggleBtn.textContent = '−';
@@ -770,12 +942,12 @@ class CodeCaptureService {
 
   private switchTab(tabName: string): void {
     if (!this.overlayContainer) return;
-    
+
     // Update tab buttons
     const tabBtns = this.overlayContainer.querySelectorAll('.tab-btn');
     tabBtns.forEach(btn => btn.classList.remove('active'));
     this.overlayContainer.querySelector(`[data-tab="${tabName}"]`)?.classList.add('active');
-    
+
     // Update tab content
     const tabContents = this.overlayContainer.querySelectorAll('.tab-content');
     tabContents.forEach(content => (content as HTMLElement).style.display = 'none');
@@ -796,7 +968,7 @@ class CodeCaptureService {
   private observePageChanges(): void {
     // Watch for URL changes (SPA navigation)
     let currentUrl = window.location.href;
-    
+
     const observer = new MutationObserver(() => {
       if (window.location.href !== currentUrl) {
         currentUrl = window.location.href;
@@ -806,7 +978,7 @@ class CodeCaptureService {
         }, 1000);
       }
     });
-    
+
     observer.observe(document.body, {
       childList: true,
       subtree: true
@@ -817,4 +989,4 @@ class CodeCaptureService {
 // Initialize the content script
 new CodeCaptureService();
 
-export {};
+export { };
