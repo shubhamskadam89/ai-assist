@@ -15,8 +15,10 @@ interface SignalVector {
   hasDPArray: boolean;
   hasMemo: boolean;
   usesSort: boolean;
+  usesHashMap: boolean;   // ✅ NEW
   loopDepth: number;
 }
+
 
 interface ProblemInfo {
   id: string;
@@ -389,6 +391,11 @@ class CodeCaptureService {
     const hasMemo = /memo\s*=|cache\s*=|Map<.*>/.test(code);
     const usesSort = /\.sort\(|sorted\(|Arrays\.sort\(|Collections\.sort\(/.test(code);
 
+    // ✅ STRONG HashMap detection
+    const usesHashMap =
+      /Map<|HashMap<|dict\(|defaultdict|Counter|new Map\(|\{\}/.test(code) ||
+      /\.put\(|\.get\(|containsKey\(|has\(/.test(code);
+
     // Estimate loop depth
     let maxDepth = 0;
     let currentDepth = 0;
@@ -405,14 +412,12 @@ class CodeCaptureService {
       if (currentDepth > maxDepth) maxDepth = currentDepth;
     }
 
-    // Fallback: If no braces (Python?), look for indentation? 
-    // This is tricky. For now, rely on minimal signals.
-
     return {
       hasRecursion,
       hasDPArray,
       hasMemo,
       usesSort,
+      usesHashMap,
       loopDepth: Math.min(maxDepth, 5) // Cap at 5
     };
   }

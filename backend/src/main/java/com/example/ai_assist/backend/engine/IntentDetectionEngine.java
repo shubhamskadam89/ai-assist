@@ -15,17 +15,17 @@ public class IntentDetectionEngine {
             return new DetectionResult(ApproachType.DP, 0.9);
         }
 
-        // Greedy (Coin Change classic failure)
+        // HashMap (explicit lookup intent)
+        if (s.usesHashMap && !s.usesSort) {
+            return new DetectionResult(ApproachType.HASHMAP, 0.9);
+        }
+
+        // Greedy
         if (s.usesSort && !s.hasRecursion && !s.hasDPArray) {
             return new DetectionResult(ApproachType.GREEDY, 0.75);
         }
 
-        // HashMap (Two Sum canonical solution)
-        if (!s.usesSort && s.loopDepth == 1 && !s.hasRecursion) {
-            return new DetectionResult(ApproachType.HASHMAP, 0.75);
-        }
-
-        // Brute force (nested loops)
+        // Brute force
         if (s.loopDepth >= 2 && !s.usesSort && !s.hasRecursion) {
             return new DetectionResult(ApproachType.BRUTE_FORCE, 0.8);
         }
