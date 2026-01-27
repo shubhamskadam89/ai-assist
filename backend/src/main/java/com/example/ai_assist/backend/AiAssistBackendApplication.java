@@ -8,6 +8,7 @@ public class AiAssistBackendApplication {
 
 	public static void main(String[] args) {
 		SpringApplication.run(AiAssistBackendApplication.class, args);
+        System.out.println("Backend Started ");
 	}
 
 }
