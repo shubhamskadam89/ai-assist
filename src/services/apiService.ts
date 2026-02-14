@@ -26,15 +26,11 @@ export interface ProblemInfo {
   difficulty?: string
 }
 
-export interface SignalVector {
-  hasRecursion: boolean
-  hasDPArray: boolean
-  hasMemo: boolean
-  usesSort: boolean
-  loopDepth: number
-}
+import { ExtractedProblem, CodeUpdateRequest, SignalVector } from '../types/problem'
 
-export interface SignalRequest {
+// Legacy types being kept for backward compatibility if needed, 
+// but SignalVector is now imported.
+export interface LocalSignalRequest {
   sessionId: string
   problemId: string
   language: string
@@ -92,17 +88,56 @@ class ApiService {
     }
   }
 
-  async sendSignal(request: SignalRequest): Promise<any> {
+  async sendSignal(request: LocalSignalRequest): Promise<any> {
+    // Legacy support
     try {
-      console.log('Sending signal:', request);
+      console.log('Sending signal (legacy):', request);
       return await this.makeRequest<any>('/signal', {
         method: 'POST',
         body: JSON.stringify(request)
       });
     } catch (error) {
       console.error('Failed to send signal:', error);
-      // Fallback or rethrow?
       return { showHint: false };
+    }
+  }
+
+  async detectProblem(problem: ExtractedProblem): Promise<{ problemContextId: string }> {
+    try {
+      console.log('Detecting problem:', problem);
+      // return await this.makeRequest<{ problemContextId: string }>('/problem/detect', {
+      //   method: 'POST',
+      //   body: JSON.stringify(problem)
+      // });
+
+      // Mock implementation
+      await new Promise(resolve => setTimeout(resolve, 500));
+      return { problemContextId: 'mock-context-' + Date.now() };
+    } catch (error) {
+      console.error('Failed to detect problem:', error);
+      throw error;
+    }
+  }
+
+  async analyzeCode(request: CodeUpdateRequest): Promise<CodeAnalysis> {
+    try {
+      console.log('Analyzing code update:', request);
+      // return await this.makeRequest<CodeAnalysis>('/code/analyze', {
+      //   method: 'POST',
+      //   body: JSON.stringify(request)
+      // });
+
+      // Mock implementation
+      await new Promise(resolve => setTimeout(resolve, 800));
+      return {
+        hints: this.getMockHints(request.rawCode, request.language),
+        score: Math.floor(Math.random() * 40) + 60,
+        suggestions: ['Mock suggestion from analysis'],
+        complexity: 'O(n)'
+      }
+    } catch (error) {
+      console.error('Failed to analyze code:', error);
+      throw error;
     }
   }
 
@@ -123,7 +158,7 @@ class ApiService {
     }
   }
 
-  async analyzeCode(code: string, language: string, problemId?: string): Promise<CodeAnalysis> {
+  async analyzeCodeLegacy(code: string, language: string, problemId?: string): Promise<CodeAnalysis> {
     try {
       // TODO: Replace with actual API call
       console.log('Analyzing code:', { code: code.substring(0, 100) + '...', language, problemId })

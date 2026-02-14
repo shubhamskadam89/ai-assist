@@ -29,7 +29,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       break;
 
     case 'CAPTURE_SIGNAL':
+      // Legacy support or if content script hasn't updated
       handleSignalCapture(message.data, sender.tab?.id);
+      break;
+
+    case 'CAPTURE_PROBLEM':
+      handleProblemCapture(message.data, sender.tab?.id);
+      break;
+
+    case 'CAPTURE_CODE_UPDATE':
+      handleCodeUpdate(message.data, sender.tab?.id);
       break;
 
     case 'GET_SETTINGS':
@@ -72,7 +81,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       const { code, language, problemId } = message.data || {}
         ; (async () => {
           try {
-            const analysis = await apiService.analyzeCode(code, language, problemId)
+            const analysis = await apiService.analyzeCodeLegacy(code, language, problemId)
             sendResponse(analysis)
           } catch (e) {
             console.error('SEND_CODE_TO_AI failed:', e)
@@ -121,7 +130,7 @@ function handleCodeCapture(data: any, _tabId?: number) {
 }
 
 function handleSignalCapture(data: any, tabId?: number) {
-  console.log('Signal captured:', data);
+  console.log('Signal captured (legacy):', data);
 
   // Call backend API
   apiService.sendSignal(data).then(response => {
@@ -134,6 +143,58 @@ function handleSignalCapture(data: any, tabId?: number) {
     }
   }).catch(err => {
     console.error('Error sending signal:', err);
+  });
+}
+
+function handleProblemCapture(data: any, tabId?: number) {
+  console.log('Problem captured:', data);
+
+  apiService.detectProblem(data).then(response => {
+    console.log('Problem context established:', response.problemContextId);
+
+    // Store context ID associated with the problem URL or ID
+    // We'll store it in a map: problemUrl -> contextId
+    chrome.storage.local.get(['problemContextMap'], (result) => {
+      const map = result.problemContextMap || {};
+      map[data.url] = response.problemContextId; // Use URL as key
+      chrome.storage.local.set({ problemContextMap: map });
+    });
+
+  }).catch(err => {
+    console.error('Error detecting problem:', err);
+  });
+}
+
+function handleCodeUpdate(data: any, tabId?: number) {
+  // data should contain { sessionId, language, rawCode, signalVector, url }
+  // We need to fetch the problemContextId using the URL
+  console.log('Code update captured:', data);
+
+  chrome.storage.local.get(['problemContextMap'], (result) => {
+    const map = result.problemContextMap || {};
+    const problemContextId = map[data.url];
+
+    const updateRequest = {
+      sessionId: data.sessionId,
+      problemContextId: problemContextId,
+      language: data.language,
+      rawCode: data.rawCode,
+      signalVector: data.signalVector
+    };
+
+    apiService.analyzeCode(updateRequest).then(response => {
+      console.log('Received analysis response:', response);
+      if (tabId) {
+        // Determine if we show alerts or update UI
+        // For now, reuse HINT_UPDATE to send back hints
+        chrome.tabs.sendMessage(tabId, {
+          type: 'HINT_UPDATE',
+          data: response // CodeAnalysis has hints
+        });
+      }
+    }).catch(err => {
+      console.error('Error analyzing code:', err);
+    });
   });
 }
 

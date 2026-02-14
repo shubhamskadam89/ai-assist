@@ -8,16 +8,12 @@ interface CodeEditor {
   on: (event: string, callback: Function) => void;
   off: (event: string, callback: Function) => void;
 }
+// Removed inline ExtractedProblem
 
 
-interface SignalVector {
-  hasRecursion: boolean;
-  hasDPArray: boolean;
-  hasMemo: boolean;
-  usesSort: boolean;
-  usesHashMap: boolean;   // ✅ NEW
-  loopDepth: number;
-}
+import { ExtractedProblem, SignalVector } from '../types/problem';
+
+// Removed inline interfaces in favor of imports
 
 
 interface ProblemInfo {
@@ -86,6 +82,9 @@ class CodeCaptureService {
 
     // Listen for page changes (SPA navigation)
     this.observePageChanges();
+
+    // Initial problem detection
+    this.extractAndSendProblem();
 
     // Listen for toggle messages
     // Listen for toggle messages
@@ -353,7 +352,7 @@ class CodeCaptureService {
 
       this.lastCapturedCode = code;
 
-      const problemInfo = this.extractProblemInfo();
+      // const problemInfo = this.extractProblemInfo(); // Unused
       const signals = this.extractSignals(code);
 
       // Check if extension context is valid
@@ -365,12 +364,13 @@ class CodeCaptureService {
 
       // Send to background script
       chrome.runtime.sendMessage({
-        type: 'CAPTURE_SIGNAL',
+        type: 'CAPTURE_CODE_UPDATE',
         data: {
           sessionId: this.sessionId,
-          problemId: problemInfo.id,
+          url: window.location.href, // Use URL for context mapping
           language: this.detectLanguage(),
-          signals: signals
+          rawCode: code,
+          signalVector: signals
         }
       });
 
@@ -465,6 +465,51 @@ class CodeCaptureService {
       difficulty,
       platform: hostname
     };
+  }
+
+  private extractProblemDetails(): ExtractedProblem {
+    const info = this.extractProblemInfo();
+    let description = '';
+    let constraints = '';
+
+    // Basic description scraping (can be expanded per platform)
+    const metaDesc = document.querySelector('meta[name="description"]');
+    if (metaDesc) description = metaDesc.getAttribute('content') || '';
+
+    return {
+      platform: info.platform,
+      title: info.title,
+      description: description,
+      difficulty: info.difficulty,
+      constraints: constraints,
+      url: window.location.href
+    };
+  }
+
+  private extractAndSendProblem() {
+    const problem = this.extractProblemDetails();
+    // Only send if we have at least a title or valid platform
+    if (problem.platform !== 'unknown') {
+      console.log('Detected problem, sending to background:', problem);
+      chrome.runtime.sendMessage({
+        type: 'CAPTURE_PROBLEM',
+        data: problem
+      });
+    }
+  }
+
+  private observePageChanges() {
+    let lastUrl = location.href;
+    setInterval(() => {
+      if (location.href !== lastUrl) {
+        lastUrl = location.href;
+        console.log('URL changed, re-detecting problem');
+        this.extractAndSendProblem();
+
+        // Also re-trigger finding editor as it might have changed
+        this.findCodeEditor();
+      }
+    }, 1000);
   }
 
   private detectLanguage(): string {
@@ -967,26 +1012,6 @@ class CodeCaptureService {
         e.preventDefault();
         this.toggleOverlay();
       }
-    });
-  }
-
-  private observePageChanges(): void {
-    // Watch for URL changes (SPA navigation)
-    let currentUrl = window.location.href;
-
-    const observer = new MutationObserver(() => {
-      if (window.location.href !== currentUrl) {
-        currentUrl = window.location.href;
-        console.log('Page changed, reinitializing...');
-        setTimeout(() => {
-          this.findCodeEditor();
-        }, 1000);
-      }
-    });
-
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true
     });
   }
 }
