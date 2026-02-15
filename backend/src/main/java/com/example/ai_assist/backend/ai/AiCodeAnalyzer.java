@@ -5,5 +5,10 @@ import com.example.ai_assist.backend.domain.SignalVector;
 import java.util.concurrent.Future;
 
 public interface AiCodeAnalyzer {
-    Future<CodeAnalysisResult> analyze(String language, String rawCode, SignalVector signalVectorFallback);
+    Future<CodeAnalysisResult> analyze(String language, String rawCode, SignalVector signalVectorFallback,
+            String expectedOptimal, int mistakeCount);
+
+    Future<String> detectApproach(String language, String rawCode);
+
+    Future<String> generateHint(String expectedOptimal, String detectedApproach, int mistakeCount);
 }

@@ -6,12 +6,21 @@ public class CodeAnalysisResult {
 
     private final ApproachType detectedApproach;
     private final double confidence;
+    private final String conceptualHint;
 
     public CodeAnalysisResult(
             ApproachType detectedApproach,
             double confidence) {
+        this(detectedApproach, confidence, null);
+    }
+
+    public CodeAnalysisResult(
+            ApproachType detectedApproach,
+            double confidence,
+            String conceptualHint) {
         this.detectedApproach = detectedApproach;
         this.confidence = confidence;
+        this.conceptualHint = conceptualHint;
     }
 
     public ApproachType getDetectedApproach() {
@@ -20,5 +29,9 @@ public class CodeAnalysisResult {
 
     public double getConfidence() {
         return confidence;
+    }
+
+    public String getConceptualHint() {
+        return conceptualHint;
     }
 }

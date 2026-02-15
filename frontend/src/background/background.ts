@@ -146,7 +146,7 @@ function handleSignalCapture(data: any, tabId?: number) {
   });
 }
 
-function handleProblemCapture(data: any, tabId?: number) {
+function handleProblemCapture(data: any, _tabId?: number) {
   console.log('Problem captured:', data);
 
   apiService.detectProblem(data).then(response => {

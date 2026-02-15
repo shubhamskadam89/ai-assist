@@ -21,9 +21,20 @@ public class RuleBasedCodeAnalyzer implements AiCodeAnalyzer {
 
     @Override
     @Async
-    public Future<CodeAnalysisResult> analyze(String language, String rawCode, SignalVector signalVectorFallback) {
+    public Future<CodeAnalysisResult> analyze(String language, String rawCode, SignalVector signalVectorFallback,
+            String expectedOptimal, int mistakeCount) {
         // Fallback to old engine
         DetectionResult result = engine.detect(signalVectorFallback);
         return new AsyncResult<>(new CodeAnalysisResult(result.getApproach(), result.getConfidence()));
+    }
+
+    @Override
+    public Future<String> detectApproach(String language, String rawCode) {
+        return new AsyncResult<>("UNKNOWN");
+    }
+
+    @Override
+    public Future<String> generateHint(String expectedOptimal, String detectedApproach, int mistakeCount) {
+        return new AsyncResult<>(null);
     }
 }

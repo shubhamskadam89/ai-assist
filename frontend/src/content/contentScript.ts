@@ -949,6 +949,33 @@ class CodeCaptureService {
 
     container.innerHTML = '';
 
+    // Handle the new CodeAnalysis format (array of hints)
+    if (hintResponse && Array.isArray(hintResponse.hints)) {
+      if (hintResponse.hints.length === 0) {
+        container.innerHTML = '<div class="hint-item"><div class="hint-message">No specific hints yet. Keep coding and we\'ll analyze your progress!</div></div>';
+        return;
+      }
+
+      hintResponse.hints.forEach((hint: any) => {
+        const div = document.createElement('div');
+        div.className = 'hint-item';
+
+        const typeDiv = document.createElement('div');
+        typeDiv.className = `hint-type ${hint.type?.toLowerCase() || 'info'}`;
+        typeDiv.textContent = hint.type === 'best-practice' ? 'Best Practice' : (hint.type || 'Hint');
+
+        const msgDiv = document.createElement('div');
+        msgDiv.className = 'hint-message';
+        msgDiv.textContent = hint.message || '';
+
+        div.appendChild(typeDiv);
+        div.appendChild(msgDiv);
+        container.appendChild(div);
+      });
+      return;
+    }
+
+    // Fallback for legacy format or direct signal response
     if (!hintResponse || !hintResponse.showHint) {
       container.innerHTML = '<div class="hint-item"><div class="hint-message">No specific hints yet. Keep going!</div></div>';
       return;
@@ -968,9 +995,6 @@ class CodeCaptureService {
     div.appendChild(typeDiv);
     div.appendChild(msgDiv);
     container.appendChild(div);
-
-    // Auto-show overlay if high priority?
-    // if (hintResponse.level === 'CRITICAL' && !this.isOverlayVisible) { ... }
   }
 
   private toggleOverlay(): void {

@@ -105,53 +105,83 @@ class ApiService {
   async detectProblem(problem: ExtractedProblem): Promise<{ problemContextId: string }> {
     try {
       console.log('Detecting problem:', problem);
-      // return await this.makeRequest<{ problemContextId: string }>('/problem/detect', {
-      //   method: 'POST',
-      //   body: JSON.stringify(problem)
-      // });
-
-      // Mock implementation
-      await new Promise(resolve => setTimeout(resolve, 500));
-      return { problemContextId: 'mock-context-' + Date.now() };
+      const response = await this.makeRequest<any>('/problem/detect', {
+        method: 'POST',
+        body: JSON.stringify(problem)
+      });
+      return response;
     } catch (error) {
       console.error('Failed to detect problem:', error);
-      throw error;
+      // Return a valid UUID format for testing/fallback
+      return { problemContextId: '00000000-0000-0000-0000-000000000000' };
     }
   }
 
   async analyzeCode(request: CodeUpdateRequest): Promise<CodeAnalysis> {
     try {
       console.log('Analyzing code update:', request);
-      // return await this.makeRequest<CodeAnalysis>('/code/analyze', {
-      //   method: 'POST',
-      //   body: JSON.stringify(request)
-      // });
 
-      // Mock implementation
-      await new Promise(resolve => setTimeout(resolve, 800));
+      const response = await this.makeRequest<any>('/code/analyze', {
+        method: 'POST',
+        body: JSON.stringify({
+          sessionId: request.sessionId || "default-session",
+          problemContextId: request.problemContextId || '00000000-0000-0000-0000-000000000000',
+          language: request.language,
+          rawCode: request.rawCode,
+          signalVector: request.signalVector || {}
+        })
+      });
+
+      console.log('Frontend: Received AI response from Java Backend:', response);
+
+      const hints: Hint[] = [];
+      if (response && response.showHint) {
+        console.log('Frontend: Valid hint found, message:', response.message);
+        hints.push({
+          id: Date.now(),
+          type: response.level === 'AI_GUIDANCE' ? 'best-practice' : 'logic',
+          message: response.message,
+          severity: 'medium', // Default
+          timestamp: Date.now()
+        });
+      } else {
+        console.log('Frontend: No hint to show (showHint is false)');
+      }
+
       return {
-        hints: this.getMockHints(request.rawCode, request.language),
-        score: Math.floor(Math.random() * 40) + 60,
-        suggestions: ['Mock suggestion from analysis'],
-        complexity: 'O(n)'
+        hints: hints,
+        score: 0,
+        suggestions: [],
+        complexity: 'Unknown'
       }
     } catch (error) {
       console.error('Failed to analyze code:', error);
-      throw error;
+      // Fallback to mock if API fails (optional, but good for stability)
+      return {
+        hints: this.getMockHints(request.rawCode, request.language),
+        score: 0,
+        suggestions: [],
+        complexity: 'Unknown'
+      };
     }
   }
 
   // Code Analysis API
   async getHintsForCode(code: string, language: string, problemId?: string): Promise<Hint[]> {
     try {
-      // TODO: Replace with actual API call
-      console.log('Getting hints for code:', { code: code.substring(0, 100) + '...', language, problemId })
+      console.log('Getting hints for code via API:', { code: code.substring(0, 100) + '...', language, problemId })
 
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      // Reuse analyzeCode logic
+      const result = await this.analyzeCode({
+        sessionId: 'manual-request-' + Date.now(), // Generate a temp session ID
+        language,
+        rawCode: code,
+        url: 'manual',
+        signalVector: {} as SignalVector,
+        problemContextId: '00000000-0000-0000-0000-000000000000'
+      } as any); // Cast as any because CodeUpdateRequest might have other fields
 
-      // Return mock data for now
-      return this.getMockHints(code, language)
+      return result.hints;
     } catch (error) {
       console.error('Failed to get hints:', error)
       return []
