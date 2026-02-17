@@ -352,7 +352,6 @@ class CodeCaptureService {
 
       this.lastCapturedCode = code;
 
-      // const problemInfo = this.extractProblemInfo(); // Unused
       const signals = this.extractSignals(code);
 
       // Check if extension context is valid
@@ -362,12 +361,15 @@ class CodeCaptureService {
         return;
       }
 
+      const problemInfo = this.extractProblemInfo();
+
       // Send to background script
       chrome.runtime.sendMessage({
         type: 'CAPTURE_CODE_UPDATE',
         data: {
           sessionId: this.sessionId,
           url: window.location.href, // Use URL for context mapping
+          problemId: problemInfo.id,
           language: this.detectLanguage(),
           rawCode: code,
           signalVector: signals
@@ -389,12 +391,8 @@ class CodeCaptureService {
     const hasRecursion = /func\s+(\w+).*?\1\(|def\s+(\w+).*?\2\(|void\s+(\w+).*?\3\(|int\s+(\w+).*?\4\(/.test(code);
     const hasDPArray = /dp\[|memo\[|cache\[/.test(code) || /vector<.*> dp/.test(code) || /int\[\].*dp/.test(code);
     const hasMemo = /memo\s*=|cache\s*=|Map<.*>/.test(code);
-    const usesSort = /\.sort\(|sorted\(|Arrays\.sort\(|Collections\.sort\(/.test(code);
-
-    // ✅ STRONG HashMap detection
-    const usesHashMap =
-      /Map<|HashMap<|dict\(|defaultdict|Counter|new Map\(|\{\}/.test(code) ||
-      /\.put\(|\.get\(|containsKey\(|has\(/.test(code);
+    const usesSort = /sort\(|sorted\(|Arrays\.sort\(|Collections\.sort\(/.test(code);
+    const usesHashMap = /Map<|HashMap<|unordered_map<|dict\(|defaultdict|Counter|new Map\(|\.put\(|\.get\(|containsKey\(|has\(/.test(code);
 
     // Estimate loop depth
     let maxDepth = 0;
@@ -477,6 +475,7 @@ class CodeCaptureService {
     if (metaDesc) description = metaDesc.getAttribute('content') || '';
 
     return {
+      id: info.id,
       platform: info.platform,
       title: info.title,
       description: description,

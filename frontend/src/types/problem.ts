@@ -1,4 +1,5 @@
 export interface ExtractedProblem {
+  id: string;
   platform: string;
   title: string;
   description: string;

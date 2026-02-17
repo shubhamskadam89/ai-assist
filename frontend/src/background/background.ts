@@ -150,13 +150,12 @@ function handleProblemCapture(data: any, _tabId?: number) {
   console.log('Problem captured:', data);
 
   apiService.detectProblem(data).then(response => {
-    console.log('Problem context established:', response.problemContextId);
+    console.log('Problem context established for ' + data.id + ':', response.problemContextId);
 
-    // Store context ID associated with the problem URL or ID
-    // We'll store it in a map: problemUrl -> contextId
     chrome.storage.local.get(['problemContextMap'], (result) => {
       const map = result.problemContextMap || {};
-      map[data.url] = response.problemContextId; // Use URL as key
+      map[data.id] = response.problemContextId; // Use stable problem ID as key
+      map[data.url] = response.problemContextId; // Fallback URL mapping
       chrome.storage.local.set({ problemContextMap: map });
     });
 
@@ -172,7 +171,8 @@ function handleCodeUpdate(data: any, tabId?: number) {
 
   chrome.storage.local.get(['problemContextMap'], (result) => {
     const map = result.problemContextMap || {};
-    const problemContextId = map[data.url];
+    // Prioritize problemId mapping, fallback to URL
+    const problemContextId = map[data.problemId] || map[data.url];
 
     const updateRequest = {
       sessionId: data.sessionId,

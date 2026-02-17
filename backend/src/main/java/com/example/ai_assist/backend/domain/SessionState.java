@@ -6,6 +6,7 @@ public class SessionState {
 
     private final String sessionId;
     private ApproachType lastDetectedApproach;
+    private String lastCodeHash;
     private long lastHintTimestamp;
     private int sameMistakeCount;
 
@@ -14,10 +15,19 @@ public class SessionState {
         this.sameMistakeCount = 0;
         this.lastHintTimestamp = 0L;
         this.lastDetectedApproach = null;
+        this.lastCodeHash = "";
     }
 
     public String getSessionId() {
         return sessionId;
+    }
+
+    public String getLastCodeHash() {
+        return lastCodeHash;
+    }
+
+    public void setLastCodeHash(String lastCodeHash) {
+        this.lastCodeHash = lastCodeHash;
     }
 
     public ApproachType getLastDetectedApproach() {

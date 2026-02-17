@@ -132,7 +132,7 @@ class ApiService {
         })
       });
 
-      console.log('Frontend: Received AI response from Java Backend:', response);
+      console.log('Frontend: Raw AI response from Java Backend:', response);
 
       const hints: Hint[] = [];
       if (response && response.showHint) {
@@ -141,11 +141,11 @@ class ApiService {
           id: Date.now(),
           type: response.level === 'AI_GUIDANCE' ? 'best-practice' : 'logic',
           message: response.message,
-          severity: 'medium', // Default
+          severity: 'medium',
           timestamp: Date.now()
         });
       } else {
-        console.log('Frontend: No hint to show (showHint is false)');
+        console.log('Frontend: No hint to show. Backend message:', response?.message || 'None');
       }
 
       return {
