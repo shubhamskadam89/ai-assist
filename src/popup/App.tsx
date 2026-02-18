@@ -13,7 +13,7 @@ import {
   Clock,
   Target
 } from 'lucide-react'
-import { HintPanel } from './components/HintPanel'
+import HintPanel from "./components/HintPanel"
 import { ProgressTracker } from './components/ProgressTracker'
 import { SettingsPanel } from './components/SettingsPanel'
 import { useExtensionState } from './hooks/useExtensionState'

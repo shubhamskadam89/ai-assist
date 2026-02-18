@@ -9,4 +9,3 @@ public class SignalRequest {
     public String language;
     public SignalVector signals;
 }
-

@@ -6,8 +6,6 @@ import {
   Shield,
   Database,
   Trash2,
-  Download,
-  Upload,
   Info,
   ExternalLink,
   Code,
@@ -27,7 +25,8 @@ interface SettingsState {
 }
 
 const SettingsPanel: React.FC = () => {
-  const { settings, updateSettings, resetProgress, exportData, importData } = useExtensionState()
+  const { settings, updateSettings, resetProgress } = useExtensionState()
+
   const [localSettings, setLocalSettings] = useState<SettingsState>({
     theme: 'system',
     enabled: true,
@@ -37,8 +36,6 @@ const SettingsPanel: React.FC = () => {
     notifications: true,
     dataCollection: false
   })
-  const [isExporting, setIsExporting] = useState(false)
-  const [isImporting, setIsImporting] = useState(false)
 
   useEffect(() => {
     setLocalSettings(prev => ({ ...prev, ...settings }))
@@ -48,31 +45,6 @@ const SettingsPanel: React.FC = () => {
     const newSettings = { ...localSettings, [key]: value }
     setLocalSettings(newSettings)
     updateSettings(newSettings)
-  }
-
-  const handleExport = async () => {
-    setIsExporting(true)
-    try {
-      await exportData()
-    } catch (error) {
-      console.error('Export failed:', error)
-    } finally {
-      setIsExporting(false)
-    }
-  }
-
-  const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file) return
-
-    setIsImporting(true)
-    try {
-      await importData(file)
-    } catch (error) {
-      console.error('Import failed:', error)
-    } finally {
-      setIsImporting(false)
-    }
   }
 
   const SettingItem: React.FC<{
@@ -105,18 +77,21 @@ const SettingsPanel: React.FC = () => {
   }> = ({ enabled, onChange }) => (
     <button
       onClick={() => onChange(!enabled)}
-      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${enabled ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'
-        }`}
+      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+        enabled ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'
+      }`}
     >
       <span
-        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${enabled ? 'translate-x-6' : 'translate-x-1'
-          }`}
+        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+          enabled ? 'translate-x-6' : 'translate-x-1'
+        }`}
       />
     </button>
   )
 
   return (
     <div className="h-full flex flex-col">
+
       {/* Header */}
       <div className="p-4 border-b border-gray-200 dark:border-gray-700">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
@@ -127,14 +102,17 @@ const SettingsPanel: React.FC = () => {
         </p>
       </div>
 
-      {/* Settings Content */}
+      {/* Content */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {/* General Settings */}
+
+        {/* General */}
         <div>
           <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
             General
           </h3>
+
           <div className="space-y-3">
+
             <SettingItem
               icon={<Code className="w-4 h-4 text-gray-600 dark:text-gray-400" />}
               title="Extension Status"
@@ -147,7 +125,9 @@ const SettingsPanel: React.FC = () => {
             </SettingItem>
 
             <SettingItem
-              icon={localSettings.theme === 'dark' ? <Moon className="w-4 h-4 text-gray-600 dark:text-gray-400" /> : <Sun className="w-4 h-4 text-gray-600 dark:text-gray-400" />}
+              icon={localSettings.theme === 'dark'
+                ? <Moon className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                : <Sun className="w-4 h-4 text-gray-600 dark:text-gray-400" />}
               title="Theme"
               description="Choose your preferred theme"
             >
@@ -165,13 +145,14 @@ const SettingsPanel: React.FC = () => {
             <SettingItem
               icon={<Bell className="w-4 h-4 text-gray-600 dark:text-gray-400" />}
               title="Notifications"
-              description="Receive hints and progress updates"
+              description="Receive hints and updates"
             >
               <Toggle
                 enabled={localSettings.notifications}
-                onChange={(notifications) => handleSettingChange('notifications', notifications)}
+                onChange={(val) => handleSettingChange('notifications', val)}
               />
             </SettingItem>
+
           </div>
         </div>
 
@@ -180,15 +161,17 @@ const SettingsPanel: React.FC = () => {
           <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
             Features
           </h3>
+
           <div className="space-y-3">
+
             <SettingItem
               icon={<Lightbulb className="w-4 h-4 text-gray-600 dark:text-gray-400" />}
               title="Show Hints"
-              description="Display real-time code hints"
+              description="Display real-time hints"
             >
               <Toggle
                 enabled={localSettings.showHints}
-                onChange={(showHints) => handleSettingChange('showHints', showHints)}
+                onChange={(val) => handleSettingChange('showHints', val)}
               />
             </SettingItem>
 
@@ -199,7 +182,7 @@ const SettingsPanel: React.FC = () => {
             >
               <Toggle
                 enabled={localSettings.showProgress}
-                onChange={(showProgress) => handleSettingChange('showProgress', showProgress)}
+                onChange={(val) => handleSettingChange('showProgress', val)}
               />
             </SettingItem>
 
@@ -210,9 +193,10 @@ const SettingsPanel: React.FC = () => {
             >
               <Toggle
                 enabled={localSettings.autoCapture}
-                onChange={(autoCapture) => handleSettingChange('autoCapture', autoCapture)}
+                onChange={(val) => handleSettingChange('autoCapture', val)}
               />
             </SettingItem>
+
           </div>
         </div>
 
@@ -221,70 +205,37 @@ const SettingsPanel: React.FC = () => {
           <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
             Privacy
           </h3>
-          <div className="space-y-3">
-            <SettingItem
-              icon={<Shield className="w-4 h-4 text-gray-600 dark:text-gray-400" />}
-              title="Data Collection"
-              description="Allow anonymous usage analytics"
-            >
-              <Toggle
-                enabled={localSettings.dataCollection}
-                onChange={(dataCollection) => handleSettingChange('dataCollection', dataCollection)}
-              />
-            </SettingItem>
-          </div>
+
+          <SettingItem
+            icon={<Shield className="w-4 h-4 text-gray-600 dark:text-gray-400" />}
+            title="Data Collection"
+            description="Allow anonymous analytics"
+          >
+            <Toggle
+              enabled={localSettings.dataCollection}
+              onChange={(val) => handleSettingChange('dataCollection', val)}
+            />
+          </SettingItem>
         </div>
 
-        {/* Data Management */}
+        {/* Reset */}
         <div>
           <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
-            Data Management
+            Data
           </h3>
-          <div className="space-y-3">
-            <SettingItem
-              icon={<Download className="w-4 h-4 text-gray-600 dark:text-gray-400" />}
-              title="Export Data"
-              description="Download your progress and settings"
-            >
-              <button
-                onClick={handleExport}
-                disabled={isExporting}
-                className="px-3 py-1 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
-              >
-                {isExporting ? 'Exporting...' : 'Export'}
-              </button>
-            </SettingItem>
 
-            <SettingItem
-              icon={<Upload className="w-4 h-4 text-gray-600 dark:text-gray-400" />}
-              title="Import Data"
-              description="Restore from backup file"
+          <SettingItem
+            icon={<Trash2 className="w-4 h-4 text-gray-600 dark:text-gray-400" />}
+            title="Reset Progress"
+            description="Clear all progress data"
+          >
+            <button
+              onClick={resetProgress}
+              className="px-3 py-1 text-sm bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
             >
-              <label className="px-3 py-1 text-sm bg-gray-600 text-white rounded-md hover:bg-gray-700 cursor-pointer transition-colors">
-                {isImporting ? 'Importing...' : 'Import'}
-                <input
-                  id="import-data-file"
-                  type="file"
-                  accept=".json"
-                  onChange={handleImport}
-                  className="hidden"
-                />
-              </label>
-            </SettingItem>
-
-            <SettingItem
-              icon={<Trash2 className="w-4 h-4 text-gray-600 dark:text-gray-400" />}
-              title="Reset Progress"
-              description="Clear all progress data"
-            >
-              <button
-                onClick={resetProgress}
-                className="px-3 py-1 text-sm bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
-              >
-                Reset
-              </button>
-            </SettingItem>
-          </div>
+              Reset
+            </button>
+          </SettingItem>
         </div>
 
         {/* About */}
@@ -292,44 +243,36 @@ const SettingsPanel: React.FC = () => {
           <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
             About
           </h3>
-          <div className="space-y-3">
-            <SettingItem
-              icon={<Info className="w-4 h-4 text-gray-600 dark:text-gray-400" />}
-              title="Version"
-              description="CodeMentor v1.0.0"
-            >
-              <span className="text-sm text-gray-600 dark:text-gray-400">
-                v1.0.0
-              </span>
-            </SettingItem>
 
-            <SettingItem
-              icon={<ExternalLink className="w-4 h-4 text-gray-600 dark:text-gray-400" />}
-              title="Support"
-              description="Get help and report issues"
-            >
-              <a
-                href="#"
-                className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
-              >
-                Help Center
-              </a>
-            </SettingItem>
-          </div>
+          <SettingItem
+            icon={<Info className="w-4 h-4 text-gray-600 dark:text-gray-400" />}
+            title="Version"
+            description="CodeMentor v1.0.0"
+          >
+            <span className="text-sm text-gray-600 dark:text-gray-400">
+              v1.0.0
+            </span>
+          </SettingItem>
+
+          <SettingItem
+            icon={<ExternalLink className="w-4 h-4 text-gray-600 dark:text-gray-400" />}
+            title="Support"
+            description="Get help and report issues"
+          >
+            <span className="text-sm text-blue-600">Help Center</span>
+          </SettingItem>
+
         </div>
+
       </div>
 
       {/* Footer */}
-      <div className="p-4 border-t border-gray-200 dark:border-gray-700">
-        <div className="text-center">
-          <p className="text-xs text-gray-600 dark:text-gray-400">
-            Made with ❤️ for developers
-          </p>
-          <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-            CodeMentor © 2024
-          </p>
-        </div>
+      <div className="p-4 border-t border-gray-200 dark:border-gray-700 text-center">
+        <p className="text-xs text-gray-600 dark:text-gray-400">
+          Made with ❤️ for developers
+        </p>
       </div>
+
     </div>
   )
 }

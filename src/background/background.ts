@@ -29,12 +29,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       break;
 
     case 'CAPTURE_SIGNAL':
-      // Legacy support or if content script hasn't updated
-      handleSignalCapture(message.data, sender.tab?.id);
-      break;
+  handleSignal(message.data, sender.tab?.id);
+  break;
 
     case 'CAPTURE_PROBLEM':
-      handleProblemCapture(message.data, sender.tab?.id);
+      handleProblemCapture(message.data);
       break;
 
     case 'CAPTURE_CODE_UPDATE':
@@ -129,24 +128,7 @@ function handleCodeCapture(data: any, _tabId?: number) {
   });
 }
 
-function handleSignalCapture(data: any, tabId?: number) {
-  console.log('Signal captured (legacy):', data);
-
-  // Call backend API
-  apiService.sendSignal(data).then(response => {
-    console.log('Received hint response:', response);
-    if (tabId) {
-      chrome.tabs.sendMessage(tabId, {
-        type: 'HINT_UPDATE',
-        data: response
-      });
-    }
-  }).catch(err => {
-    console.error('Error sending signal:', err);
-  });
-}
-
-function handleProblemCapture(data: any, tabId?: number) {
+function handleProblemCapture(data: any) {
   console.log('Problem captured:', data);
 
   apiService.detectProblem(data).then(response => {
@@ -183,18 +165,21 @@ function handleCodeUpdate(data: any, tabId?: number) {
     };
 
     apiService.analyzeCode(updateRequest).then(response => {
-      console.log('Received analysis response:', response);
-      if (tabId) {
-        // Determine if we show alerts or update UI
-        // For now, reuse HINT_UPDATE to send back hints
-        chrome.tabs.sendMessage(tabId, {
-          type: 'HINT_UPDATE',
-          data: response // CodeAnalysis has hints
-        });
-      }
-    }).catch(err => {
-      console.error('Error analyzing code:', err);
+  console.log('Received analysis response:', response);
+
+  // ⭐ STORE HINTS FOR POPUP
+  chrome.storage.local.set({ latestHints: response.hints || [] });
+
+  if (tabId) {
+    chrome.tabs.sendMessage(tabId, {
+      type: 'HINT_UPDATE',
+      data: response
     });
+  }
+}).catch(err => {
+  console.error('Error analyzing code:', err);
+});
+
   });
 }
 
@@ -225,6 +210,25 @@ function handleProgressSave(data: any) {
     console.log('Progress saved:', userProgress[data.problemId]);
   });
 }
+
+function handleSignal(data: any, tabId?: number) {
+  console.log('Signal captured:', data);
+
+  apiService.sendSignal(data).then(response => {
+    console.log('Signal response:', response);
+
+    if (tabId) {
+      chrome.tabs.sendMessage(tabId, {
+        type: 'HINT_UPDATE',
+        data: response
+      });
+    }
+
+  }).catch(err => {
+    console.error('Signal API error:', err);
+  });
+}
+
 
 // Handle tab updates to inject content script
 chrome.tabs.onUpdated.addListener((_tabId, changeInfo, tab) => {

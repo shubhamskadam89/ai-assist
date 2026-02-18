@@ -88,75 +88,75 @@ class ApiService {
     }
   }
 
-  async sendSignal(request: LocalSignalRequest): Promise<any> {
-    // Legacy support
-    try {
-      console.log('Sending signal (legacy):', request);
-      return await this.makeRequest<any>('/signal', {
-        method: 'POST',
-        body: JSON.stringify(request)
-      });
-    } catch (error) {
-      console.error('Failed to send signal:', error);
-      return { showHint: false };
-    }
+ async sendSignal(request: LocalSignalRequest): Promise<any> {
+  try {
+    console.log("Sending signal to backend:", request);
+
+    return await this.makeRequest('/signal', {
+      method: 'POST',
+      body: JSON.stringify(request)
+    });
+
+  } catch (error) {
+    console.error('Signal API failed:', error);
+    return { showHint: false };
   }
+}
+
 
   async detectProblem(problem: ExtractedProblem): Promise<{ problemContextId: string }> {
-    try {
-      console.log('Detecting problem:', problem);
-      // return await this.makeRequest<{ problemContextId: string }>('/problem/detect', {
-      //   method: 'POST',
-      //   body: JSON.stringify(problem)
-      // });
+  try {
+    console.log('Detecting problem (REAL API):', problem);
 
-      // Mock implementation
-      await new Promise(resolve => setTimeout(resolve, 500));
-      return { problemContextId: 'mock-context-' + Date.now() };
-    } catch (error) {
-      console.error('Failed to detect problem:', error);
-      throw error;
-    }
+    return await this.makeRequest<{ problemContextId: string }>('/problem/detect', {
+      method: 'POST',
+      body: JSON.stringify({
+        problemStatement: problem.description,
+        language: problem.platform
+      })
+    });
+
+  } catch (error) {
+    console.error('Failed to detect problem:', error);
+    throw error;
   }
+}
+
 
   async analyzeCode(request: CodeUpdateRequest): Promise<CodeAnalysis> {
-    try {
-      console.log('Analyzing code update:', request);
-      // return await this.makeRequest<CodeAnalysis>('/code/analyze', {
-      //   method: 'POST',
-      //   body: JSON.stringify(request)
-      // });
+  try {
+    console.log('Sending to backend:', request)
 
-      // Mock implementation
-      await new Promise(resolve => setTimeout(resolve, 800));
-      return {
-        hints: this.getMockHints(request.rawCode, request.language),
-        score: Math.floor(Math.random() * 40) + 60,
-        suggestions: ['Mock suggestion from analysis'],
-        complexity: 'O(n)'
-      }
-    } catch (error) {
-      console.error('Failed to analyze code:', error);
-      throw error;
+    const response = await this.makeRequest<any>('/code/analyze', {
+      method: 'POST',
+      body: JSON.stringify(request)
+    })
+
+    return {
+      hints: [{
+        id: 1,
+        type: 'logic',
+        message: response.message,
+        severity: 'medium',
+        timestamp: Date.now()
+      }],
+      score: 80,
+      suggestions: [],
+      complexity: 'O(n)'
     }
+
+  } catch (error) {
+    console.error('Backend call failed:', error)
+    throw error
   }
+}
+
 
   // Code Analysis API
-  async getHintsForCode(code: string, language: string, problemId?: string): Promise<Hint[]> {
-    try {
-      // TODO: Replace with actual API call
-      console.log('Getting hints for code:', { code: code.substring(0, 100) + '...', language, problemId })
-
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000))
-
-      // Return mock data for now
-      return this.getMockHints(code, language)
-    } catch (error) {
-      console.error('Failed to get hints:', error)
-      return []
-    }
-  }
+  async getHintsForCode(_code: string, _language: string, _problemId?: string): Promise<Hint[]> {
+  console.log('Backend hint API not implemented yet');
+  return [];
+}
 
   async analyzeCodeLegacy(code: string, language: string, problemId?: string): Promise<CodeAnalysis> {
     try {
