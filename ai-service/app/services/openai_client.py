@@ -11,19 +11,24 @@ if GEMINI_API_KEY:
 
 def chat_completion(system_prompt: str, user_prompt: str) -> str:
     """
-    Unified chat completion that switches between OpenAI and Gemini
+    Unified chat completion that switches between OpenAI, Gemini and Ollama
     based on the AI_PROVIDER environment variable.
     """
     provider = os.getenv("AI_PROVIDER", "openai").lower()
     
-    if provider == "gemini":
-        try:
-            return _gemini_completion(system_prompt, user_prompt)
-        except Exception as e:
-            print(f"Gemini error: {e}")
-            raise e # Explicitly fail rather than falling back to broken OpenAI key
-    
-    return _openai_completion(system_prompt, user_prompt)
+    try:
+        if provider == "gemini":
+            res = _gemini_completion(system_prompt, user_prompt)
+        elif provider == "ollama":
+            res = _ollama_completion(system_prompt, user_prompt)
+        else:
+            res = _openai_completion(system_prompt, user_prompt)
+        
+        print(f"AI Response ({provider}): {res[:200]}...")
+        return res
+    except Exception as e:
+        print(f"Error with provider {provider}: {e}")
+        raise e
 
 
 def _openai_completion(system_prompt: str, user_prompt: str) -> str:
@@ -54,3 +59,29 @@ User Request:
 """
     response = model.generate_content(combined_prompt)
     return response.text
+
+
+def _ollama_completion(system_prompt: str, user_prompt: str) -> str:
+    """
+    Calls local Ollama instance using the OpenAI-compatible API
+    """
+    from openai import OpenAI
+    
+    base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434/v1")
+    model = os.getenv("OLLAMA_MODEL", "llama3")
+    
+    client = OpenAI(
+        base_url=base_url,
+        api_key="ollama",  # Required but ignored by Ollama
+    )
+    
+    response = client.chat.completions.create(
+        model=model,
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt}
+        ],
+        temperature=0.2,
+        response_format={"type": "json_object"}
+    )
+    return response.choices[0].message.content

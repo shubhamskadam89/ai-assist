@@ -1,0 +1,783 @@
+========================================
+File: backend/pom.xml
+========================================
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>org.springframework.boot</groupId>
+		<artifactId>spring-boot-starter-parent</artifactId>
+		<version>4.0.1</version>
+		<relativePath/> <!-- lookup parent from repository -->
+	</parent>
+	<groupId>com.example.ai_assist</groupId>
+	<artifactId>backend</artifactId>
+	<version>0.0.1-SNAPSHOT</version>
+	<name>ai_assist_backend</name>
+	<description>backend for ai assist</description>
+	<url/>
+	<licenses>
+		<license/>
+	</licenses>
+	<developers>
+		<developer/>
+	</developers>
+	<scm>
+		<connection/>
+		<developerConnection/>
+		<tag/>
+		<url/>
+	</scm>
+	<properties>
+		<java.version>21</java.version>
+	</properties>
+	<dependencies>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-webmvc</artifactId>
+		</dependency>
+
+
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-data-jpa</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.postgresql</groupId>
+			<artifactId>postgresql</artifactId>
+			<scope>runtime</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.projectlombok</groupId>
+			<artifactId>lombok</artifactId>
+			<optional>true</optional>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-webmvc-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+    </dependencies>
+
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<configuration>
+					<annotationProcessorPaths>
+						<path>
+							<groupId>org.projectlombok</groupId>
+							<artifactId>lombok</artifactId>
+						</path>
+					</annotationProcessorPaths>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-maven-plugin</artifactId>
+				<configuration>
+					<excludes>
+						<exclude>
+							<groupId>org.projectlombok</groupId>
+							<artifactId>lombok</artifactId>
+						</exclude>
+					</excludes>
+				</configuration>
+			</plugin>
+		</plugins>
+	</build>
+
+</project>
+
+
+========================================
+File: backend/src/test/java/com/example/ai_assist/backend/AiAssistBackendApplicationTests.java
+========================================
+package com.example.ai_assist.backend;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.context.SpringBootTest;
+
+@SpringBootTest
+class AiAssistBackendApplicationTests {
+
+	@Test
+	void contextLoads() {
+	}
+
+}
+
+
+========================================
+File: backend/src/main/resources/application.properties
+========================================
+spring.application.name=ai_assist_backend
+
+# Database Configuration
+spring.datasource.url=jdbc:postgresql://localhost:5432/codementor
+spring.datasource.username=postgres
+spring.datasource.password=postgres
+spring.datasource.driver-class-name=org.postgresql.Driver
+
+# JPA / Hibernate
+spring.jpa.show-sql=true
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQLDialect
+
+
+
+
+========================================
+File: backend/src/main/java/com/example/ai_assist/backend/dto/SignalRequest.java
+========================================
+package com.example.ai_assist.backend.dto;
+
+import com.example.ai_assist.backend.domain.SignalVector;
+
+public class SignalRequest {
+
+    public String sessionId;
+    public String problemId;
+    public String language;
+    public SignalVector signals;
+}
+
+
+
+========================================
+File: backend/src/main/java/com/example/ai_assist/backend/dto/HintResponse.java
+========================================
+package com.example.ai_assist.backend.dto;
+
+import com.example.ai_assist.backend.domain.Hint;
+
+public class HintResponse {
+
+    public boolean showHint;
+    public String level;
+    public String message;
+
+    public static HintResponse noHint() {
+        HintResponse r = new HintResponse();
+        r.showHint = false;
+        return r;
+    }
+
+    public static HintResponse from(Hint h) {
+        HintResponse r = new HintResponse();
+        r.showHint = true;
+        r.level = h.getLevel();
+        r.message = h.getMessage();
+        return r;
+    }
+}
+
+
+
+========================================
+File: backend/src/main/java/com/example/ai_assist/backend/repository/ProblemRepository.java
+========================================
+package com.example.ai_assist.backend.repository;
+
+import com.example.ai_assist.backend.domain.Problem;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public interface ProblemRepository extends JpaRepository<Problem, String> {
+}
+
+
+========================================
+File: backend/src/main/java/com/example/ai_assist/backend/config/DataSeeder.java
+========================================
+package com.example.ai_assist.backend.config;
+
+import com.example.ai_assist.backend.domain.Problem;
+import com.example.ai_assist.backend.domain.enums.ApproachType;
+import com.example.ai_assist.backend.repository.ProblemRepository;
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.stereotype.Component;
+
+import java.util.Set;
+
+@Component
+public class DataSeeder implements CommandLineRunner {
+
+    private final ProblemRepository problemRepository;
+
+    public DataSeeder(ProblemRepository problemRepository) {
+        this.problemRepository = problemRepository;
+    }
+
+    @Override
+    public void run(String... args) throws Exception {
+        if (problemRepository.count() == 0) {
+            System.out.println("Seeding initial problems...");
+
+            // Two Sum
+            problemRepository.save(new Problem(
+                    "leetcode_1",
+                    Set.of(ApproachType.HASHMAP, ApproachType.TWO_POINTER),
+                    Set.of(ApproachType.BRUTE_FORCE)));
+
+            // Coin Change
+            problemRepository.save(new Problem(
+                    "leetcode_322",
+                    Set.of(ApproachType.DP),
+                    Set.of(ApproachType.GREEDY)));
+
+            System.out.println("Problem seeding completed.");
+        }
+    }
+}
+
+
+========================================
+File: backend/src/main/java/com/example/ai_assist/backend/AiAssistBackendApplication.java
+========================================
+package com.example.ai_assist.backend;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class AiAssistBackendApplication {
+
+	public static void main(String[] args) {
+		SpringApplication.run(AiAssistBackendApplication.class, args);
+        System.out.println("Backend Started ");
+	}
+
+}
+
+
+========================================
+File: backend/src/main/java/com/example/ai_assist/backend/api/SignalController.java
+========================================
+package com.example.ai_assist.backend.api;
+
+import com.example.ai_assist.backend.dto.HintResponse;
+import com.example.ai_assist.backend.dto.SignalRequest;
+import com.example.ai_assist.backend.service.SignalService;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/api")
+@org.springframework.web.bind.annotation.CrossOrigin(origins = "*")
+public class SignalController {
+
+    private final SignalService service;
+
+    public SignalController(SignalService service) {
+        this.service = service;
+    }
+
+    @PostMapping("/signal")
+    public HintResponse receiveSignal(@RequestBody SignalRequest request) {
+        return service.handleSignal(request);
+    }
+}
+
+
+========================================
+File: backend/src/main/java/com/example/ai_assist/backend/service/SignalService.java
+========================================
+package com.example.ai_assist.backend.service;
+
+import com.example.ai_assist.backend.domain.Approach;
+import com.example.ai_assist.backend.domain.DetectionResult;
+import com.example.ai_assist.backend.domain.Problem;
+import com.example.ai_assist.backend.domain.SessionState;
+import com.example.ai_assist.backend.domain.enums.ValidationResult;
+import com.example.ai_assist.backend.dto.HintResponse;
+import com.example.ai_assist.backend.dto.SignalRequest;
+import com.example.ai_assist.backend.engine.ApproachValidationEngine;
+import com.example.ai_assist.backend.engine.HintPolicyEngine;
+import com.example.ai_assist.backend.engine.IntentDetectionEngine;
+import org.springframework.stereotype.Service;
+
+@Service
+public class SignalService {
+
+    private final ProblemRegistry registry;
+    private final IntentDetectionEngine intentEngine;
+    private final ApproachValidationEngine validationEngine;
+    private final HintPolicyEngine hintPolicy;
+    private final SessionManager sessionManager;
+
+    public SignalService(
+            ProblemRegistry registry,
+            IntentDetectionEngine intentEngine,
+            ApproachValidationEngine validationEngine,
+            HintPolicyEngine hintPolicy,
+            SessionManager sessionManager
+    ) {
+        this.registry = registry;
+        this.intentEngine = intentEngine;
+        this.validationEngine = validationEngine;
+        this.hintPolicy = hintPolicy;
+        this.sessionManager = sessionManager;
+    }
+
+    public HintResponse handleSignal(SignalRequest req) {
+
+        Problem problem = registry.getProblem(req.problemId);
+        if (problem == null) {
+            return HintResponse.noHint();
+        }
+
+        DetectionResult detected = intentEngine.detect(req.signals);
+
+        // Confidence gate
+        if (detected.getConfidence() < 0.7) {
+            return HintResponse.noHint();
+        }
+
+        ValidationResult result =
+                validationEngine.validate(
+                        problem,
+                        new Approach(detected.getApproach())
+                );
+
+        SessionState session = sessionManager.getSession(req.sessionId);
+
+        return hintPolicy
+                .generateHint(result, detected.getApproach(), session)
+                .map(HintResponse::from)
+                .orElse(HintResponse.noHint());
+    }
+}
+
+
+========================================
+File: backend/src/main/java/com/example/ai_assist/backend/service/ProblemRegistry.java
+========================================
+package com.example.ai_assist.backend.service;
+
+import com.example.ai_assist.backend.domain.Problem;
+import org.springframework.stereotype.Service;
+
+@Service
+public class ProblemRegistry {
+
+        private final com.example.ai_assist.backend.repository.ProblemRepository problemRepository;
+
+        public ProblemRegistry(com.example.ai_assist.backend.repository.ProblemRepository problemRepository) {
+                this.problemRepository = problemRepository;
+        }
+
+        public Problem getProblem(String id) {
+                return problemRepository.findById(id).orElse(null);
+        }
+}
+
+
+========================================
+File: backend/src/main/java/com/example/ai_assist/backend/service/SessionManager.java
+========================================
+package com.example.ai_assist.backend.service;
+
+import com.example.ai_assist.backend.domain.SessionState;
+import org.springframework.stereotype.Service;
+
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
+@Service
+public class SessionManager {
+
+    private final Map<String, SessionState> sessions = new ConcurrentHashMap<>();
+
+    public SessionState getSession(String sessionId) {
+        return sessions.computeIfAbsent(sessionId, SessionState::new);
+    }
+}
+
+
+========================================
+File: backend/src/main/java/com/example/ai_assist/backend/engine/ApproachValidationEngine.java
+========================================
+package com.example.ai_assist.backend.engine;
+
+import com.example.ai_assist.backend.domain.Approach;
+import com.example.ai_assist.backend.domain.Problem;
+import com.example.ai_assist.backend.domain.enums.ValidationResult;
+import org.springframework.stereotype.Component;
+
+@Component
+public class ApproachValidationEngine {
+
+    public ValidationResult validate(Problem problem, Approach detected) {
+
+        if (problem.getValidApproaches().contains(detected.getType())) {
+            return ValidationResult.CORRECT;
+        }
+
+        if (problem.getInvalidApproaches().contains(detected.getType())) {
+            return ValidationResult.WRONG;
+        }
+
+        return ValidationResult.SUSPICIOUS;
+    }
+}
+
+
+========================================
+File: backend/src/main/java/com/example/ai_assist/backend/engine/IntentDetectionEngine.java
+========================================
+package com.example.ai_assist.backend.engine;
+
+import com.example.ai_assist.backend.domain.DetectionResult;
+import com.example.ai_assist.backend.domain.SignalVector;
+import com.example.ai_assist.backend.domain.enums.ApproachType;
+import org.springframework.stereotype.Component;
+
+@Component
+public class IntentDetectionEngine {
+
+    public DetectionResult detect(SignalVector s) {
+
+        // Dynamic Programming
+        if (s.hasDPArray) {
+            return new DetectionResult(ApproachType.DP, 0.9);
+        }
+
+        // HashMap (explicit lookup intent)
+        if (s.usesHashMap && !s.usesSort) {
+            return new DetectionResult(ApproachType.HASHMAP, 0.9);
+        }
+
+        // Greedy
+        if (s.usesSort && !s.hasRecursion && !s.hasDPArray) {
+            return new DetectionResult(ApproachType.GREEDY, 0.75);
+        }
+
+        // Brute force
+        if (s.loopDepth >= 2 && !s.usesSort && !s.hasRecursion) {
+            return new DetectionResult(ApproachType.BRUTE_FORCE, 0.8);
+        }
+
+        return new DetectionResult(ApproachType.UNKNOWN, 0.3);
+    }
+}
+
+
+========================================
+File: backend/src/main/java/com/example/ai_assist/backend/engine/HintPolicyEngine.java
+========================================
+package com.example.ai_assist.backend.engine;
+
+import com.example.ai_assist.backend.domain.Hint;
+import com.example.ai_assist.backend.domain.SessionState;
+import com.example.ai_assist.backend.domain.enums.ApproachType;
+import com.example.ai_assist.backend.domain.enums.ValidationResult;
+import org.springframework.stereotype.Component;
+
+import java.util.Optional;
+
+@Component
+public class HintPolicyEngine {
+
+    private static final long COOLDOWN_MS = 30_000; // 30 seconds
+
+    public Optional<Hint> generateHint(
+            ValidationResult result,
+            ApproachType approach,
+            SessionState session
+    ) {
+
+        if (result != ValidationResult.WRONG) {
+            session.resetMistakes();
+            return Optional.empty();
+        }
+
+        long now = System.currentTimeMillis();
+
+        // Cooldown check
+        if (now - session.getLastHintTimestamp() < COOLDOWN_MS) {
+            return Optional.empty();
+        }
+
+        // Same mistake?
+        if (approach == session.getLastDetectedApproach()) {
+            session.incrementMistake();
+        } else {
+            session.resetMistakes();
+        }
+
+        session.setLastDetectedApproach(approach);
+        session.setLastHintTimestamp(now);
+
+        // Escalation logic
+        if (approach == ApproachType.GREEDY) {
+            return Optional.of(
+                    session.getSameMistakeCount() >= 2
+                            ? new Hint(
+                            "DIRECTIONAL",
+                            "This problem has overlapping subproblems. Try thinking about reusing results instead of making local choices."
+                    )
+                            : new Hint(
+                            "GENTLE",
+                            "Check whether making a locally optimal choice always leads to a globally optimal solution."
+                    )
+            );
+        }
+
+        if (approach == ApproachType.BRUTE_FORCE) {
+            return Optional.of(
+                    session.getSameMistakeCount() >= 2
+                            ? new Hint(
+                            "DIRECTIONAL",
+                            "Repeated nested scans may not scale. Is there a data structure that can help you look up values faster?"
+                    )
+                            : new Hint(
+                            "GENTLE",
+                            "Is there a way to trade extra space for faster lookups?"
+                    )
+            );
+        }
+
+        return Optional.empty();
+    }
+}
+
+
+========================================
+File: backend/src/main/java/com/example/ai_assist/backend/domain/SessionState.java
+========================================
+package com.example.ai_assist.backend.domain;
+
+import com.example.ai_assist.backend.domain.enums.ApproachType;
+
+public class SessionState {
+
+    private final String sessionId;
+    private ApproachType lastDetectedApproach;
+    private long lastHintTimestamp;
+    private int sameMistakeCount;
+
+    public SessionState(String sessionId) {
+        this.sessionId = sessionId;
+        this.sameMistakeCount = 0;
+        this.lastHintTimestamp = 0L;
+        this.lastDetectedApproach = null;
+    }
+
+    public String getSessionId() {
+        return sessionId;
+    }
+
+    public ApproachType getLastDetectedApproach() {
+        return lastDetectedApproach;
+    }
+
+    public void setLastDetectedApproach(ApproachType lastDetectedApproach) {
+        this.lastDetectedApproach = lastDetectedApproach;
+    }
+
+    public long getLastHintTimestamp() {
+        return lastHintTimestamp;
+    }
+
+    public void setLastHintTimestamp(long lastHintTimestamp) {
+        this.lastHintTimestamp = lastHintTimestamp;
+    }
+
+    public int getSameMistakeCount() {
+        return sameMistakeCount;
+    }
+
+    public void incrementMistake() {
+        this.sameMistakeCount++;
+    }
+
+    public void resetMistakes() {
+        this.sameMistakeCount = 0;
+    }
+}
+
+
+========================================
+File: backend/src/main/java/com/example/ai_assist/backend/domain/Problem.java
+========================================
+package com.example.ai_assist.backend.domain;
+
+import com.example.ai_assist.backend.domain.enums.ApproachType;
+import jakarta.persistence.*;
+
+import java.util.Set;
+
+@Entity
+@Table(name = "problem")
+public class Problem {
+
+    @Id
+    private String problemId;
+
+    @ElementCollection(targetClass = ApproachType.class, fetch = FetchType.EAGER)
+    @CollectionTable(name = "problem_valid_approaches", joinColumns = @JoinColumn(name = "problem_id"))
+    @Enumerated(EnumType.STRING)
+    @Column(name = "approach_type")
+    private Set<ApproachType> validApproaches;
+
+    @ElementCollection(targetClass = ApproachType.class, fetch = FetchType.EAGER)
+    @CollectionTable(name = "problem_invalid_approaches", joinColumns = @JoinColumn(name = "problem_id"))
+    @Enumerated(EnumType.STRING)
+    @Column(name = "approach_type")
+    private Set<ApproachType> invalidApproaches;
+
+    public Problem() {
+    }
+
+    public Problem(String problemId,
+            Set<ApproachType> valid,
+            Set<ApproachType> invalid) {
+        this.problemId = problemId;
+        this.validApproaches = valid;
+        this.invalidApproaches = invalid;
+    }
+
+    public String getProblemId() {
+        return problemId;
+    }
+
+    public Set<ApproachType> getValidApproaches() {
+        return validApproaches;
+    }
+
+    public Set<ApproachType> getInvalidApproaches() {
+        return invalidApproaches;
+    }
+}
+
+
+========================================
+File: backend/src/main/java/com/example/ai_assist/backend/domain/enums/ValidationResult.java
+========================================
+package com.example.ai_assist.backend.domain.enums;
+
+public enum ValidationResult {
+    CORRECT,
+    WRONG,
+    SUSPICIOUS
+}
+
+
+========================================
+File: backend/src/main/java/com/example/ai_assist/backend/domain/enums/ApproachType.java
+========================================
+package com.example.ai_assist.backend.domain.enums;
+
+public enum ApproachType {
+    DP,
+    GREEDY,
+    DFS,
+
+    HASHMAP,
+    TWO_POINTER,
+    BRUTE_FORCE,
+
+    UNKNOWN
+}
+
+
+========================================
+File: backend/src/main/java/com/example/ai_assist/backend/domain/Hint.java
+========================================
+package com.example.ai_assist.backend.domain;
+
+public class Hint {
+
+    private final String level;
+    private final String message;
+
+    public Hint(String level, String message) {
+        this.level = level;
+        this.message = message;
+    }
+
+    public String getLevel() {
+        return level;
+    }
+
+    public String getMessage() {
+        return message;
+    }
+}
+
+
+========================================
+File: backend/src/main/java/com/example/ai_assist/backend/domain/Approach.java
+========================================
+package com.example.ai_assist.backend.domain;
+
+import com.example.ai_assist.backend.domain.enums.ApproachType;
+
+public class Approach {
+
+    private final ApproachType type;
+
+    public Approach(ApproachType type) {
+        this.type = type;
+    }
+
+    public ApproachType getType() {
+        return type;
+    }
+}
+
+
+========================================
+File: backend/src/main/java/com/example/ai_assist/backend/domain/SignalVector.java
+========================================
+package com.example.ai_assist.backend.domain;
+
+public class SignalVector {
+
+    public boolean hasRecursion;
+    public boolean hasDPArray;
+    public boolean hasMemo;
+    public boolean usesSort;
+    public boolean usesHashMap; // ✅ NEW
+    public int loopDepth;
+
+}
+
+
+========================================
+File: backend/src/main/java/com/example/ai_assist/backend/domain/DetectionResult.java
+========================================
+package com.example.ai_assist.backend.domain;
+
+import com.example.ai_assist.backend.domain.enums.ApproachType;
+
+public class DetectionResult {
+
+    private final ApproachType approach;
+    private final double confidence;
+
+    public DetectionResult(ApproachType approach, double confidence) {
+        this.approach = approach;
+        this.confidence = confidence;
+    }
+
+    public ApproachType getApproach() {
+        return approach;
+    }
+
+    public double getConfidence() {
+        return confidence;
+    }
+}
+
+

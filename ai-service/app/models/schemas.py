@@ -7,8 +7,8 @@ class ProblemClassificationRequest(BaseModel):
 
 
 class ProblemClassificationResponse(BaseModel):
-    expectedOptimal: str
-    confidence: float
+    expectedOptimal: str = "UNKNOWN"
+    confidence: float = 0.0
     reasoning: str | None = None
 
 
@@ -20,10 +20,10 @@ class CodeGuidanceRequest(BaseModel):
 
 
 class CodeGuidanceResponse(BaseModel):
-    detectedApproach: str
-    alignment: str  # ALIGNED | MISALIGNED | UNCERTAIN
-    conceptualHint: str | None
-    confidence: float
+    detectedApproach: str = "UNKNOWN"
+    alignment: str = "UNCERTAIN"  # ALIGNED | MISALIGNED | UNCERTAIN
+    conceptualHint: str | None = None
+    confidence: float = 0.0
 
 
 class ApproachDetectionRequest(BaseModel):
@@ -32,8 +32,8 @@ class ApproachDetectionRequest(BaseModel):
 
 
 class ApproachDetectionResponse(BaseModel):
-    detectedApproach: str
-    confidence: float
+    detectedApproach: str = "UNKNOWN"
+    confidence: float = 0.0
 
 
 class HintGenerationRequest(BaseModel):

@@ -2,7 +2,6 @@ package com.example.ai_assist.backend.service;
 
 import com.example.ai_assist.backend.ai.AiProblemClassifier;
 import com.example.ai_assist.backend.ai.model.ProblemClassificationResult;
-import com.example.ai_assist.backend.domain.Problem;
 import com.example.ai_assist.backend.domain.context.ProblemContext;
 import com.example.ai_assist.backend.domain.enums.ApproachType;
 import com.example.ai_assist.backend.domain.enums.ClassificationStatus;
@@ -14,7 +13,6 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 
 @Service
 public class ProblemDetectionService {
@@ -62,7 +60,7 @@ public class ProblemDetectionService {
 
         return new ProblemDetectionResponse(
                 context.getId(),
-                context.getExpectedOptimal() != null ? context.getExpectedOptimal().name() : null,
+                context.getExpectedOptimal(),
                 context.getClassificationConfidence());
     }
 

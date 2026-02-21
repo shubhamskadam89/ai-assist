@@ -136,12 +136,18 @@ class ApiService {
 
       const hints: Hint[] = [];
       if (response && response.showHint) {
-        console.log('Frontend: Valid hint found, message:', response.message);
+        console.log('Frontend: Valid hint found, level:', response.level, 'message:', response.message);
+        // Map backend levels to frontend hint types
+        let hintType: Hint['type'] = 'logic';
+        if (response.level === 'AI_GUIDANCE') hintType = 'best-practice';
+        else if (response.level === 'GREAT_JOB') hintType = 'performance';
+        else if (response.level === 'CLASSIFYING') hintType = 'syntax';
+
         hints.push({
           id: Date.now(),
-          type: response.level === 'AI_GUIDANCE' ? 'best-practice' : 'logic',
+          type: hintType,
           message: response.message,
-          severity: 'medium',
+          severity: response.level === 'GREAT_JOB' ? 'low' : 'medium',
           timestamp: Date.now()
         });
       } else {

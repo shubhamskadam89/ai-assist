@@ -14,9 +14,9 @@ public class AiConfiguration {
     @Bean
     @Primary
     public AiProblemClassifier problemClassifier(
-            RuleBasedProblemClassifier rule) {
-        // We only have rule-based for now
-        return rule;
+            RuleBasedProblemClassifier rule,
+            PythonAiProblemClassifier python) {
+        return "LLM".equalsIgnoreCase(mode) ? python : rule;
     }
 
     @Bean

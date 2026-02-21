@@ -1,10 +1,13 @@
 package com.example.ai_assist.backend.service;
 
 import com.example.ai_assist.backend.ai.AiCodeAnalyzer;
+import com.example.ai_assist.backend.ai.AiProblemClassifier;
+import com.example.ai_assist.backend.ai.model.ProblemClassificationResult;
 import com.example.ai_assist.backend.domain.SessionState;
 import com.example.ai_assist.backend.domain.context.CodeSnapshot;
 import com.example.ai_assist.backend.domain.context.ProblemContext;
 import com.example.ai_assist.backend.domain.enums.ApproachType;
+import com.example.ai_assist.backend.domain.enums.ClassificationStatus;
 import com.example.ai_assist.backend.dto.CodeAnalysisRequest;
 import com.example.ai_assist.backend.dto.CodeAnalysisResponse;
 import com.example.ai_assist.backend.repository.CodeSnapshotRepository;
@@ -24,16 +27,19 @@ public class CodeAnalysisService {
         private final CodeSnapshotRepository snapshotRepository;
         private final SessionManager sessionManager;
         private final AiCodeAnalyzer codeAnalyzer;
+        private final AiProblemClassifier problemClassifier;
 
         public CodeAnalysisService(
                         ProblemContextRepository contextRepository,
                         CodeSnapshotRepository snapshotRepository,
                         SessionManager sessionManager,
-                        AiCodeAnalyzer codeAnalyzer) {
+                        AiCodeAnalyzer codeAnalyzer,
+                        AiProblemClassifier problemClassifier) {
                 this.contextRepository = contextRepository;
                 this.snapshotRepository = snapshotRepository;
                 this.sessionManager = sessionManager;
                 this.codeAnalyzer = codeAnalyzer;
+                this.problemClassifier = problemClassifier;
         }
 
         public CodeAnalysisResponse analyze(CodeAnalysisRequest request) {
@@ -77,17 +83,42 @@ public class CodeAnalysisService {
 
                 ApproachType detectedApproach = mapToApproachType(detectedApproachStr);
 
-                // 4. Comparison & Escalation logic
+                // 4. Get expectedOptimal — classify on-demand if Ollama hasn't finished yet
                 ApproachType expectedOptimal = context.getExpectedOptimal();
                 if (expectedOptimal == null) {
-                        return new CodeAnalysisResponse(false, null, null);
+                        log.info("expectedOptimal is null — classifying problem on-demand via AI: title='{}'",
+                                        context.getTitle());
+                        try {
+                                ProblemClassificationResult classification = problemClassifier
+                                                .classify(context.getTitle(), context.getDescription()).get();
+                                expectedOptimal = classification.getExpectedOptimal();
+                                if (expectedOptimal != null) {
+                                        context.setExpectedOptimal(expectedOptimal);
+                                        context.setClassificationConfidence(classification.getConfidence());
+                                        context.setStatus(ClassificationStatus.COMPLETED);
+                                        contextRepository.save(context);
+                                        log.info("On-demand classification complete: expectedOptimal={}, confidence={}",
+                                                        expectedOptimal, classification.getConfidence());
+                                }
+                        } catch (InterruptedException | ExecutionException e) {
+                                log.error("On-demand classification failed", e);
+                        }
+                }
+
+                if (expectedOptimal == null) {
+                        log.warn("Classification still pending, cannot generate hint yet.");
+                        return new CodeAnalysisResponse(true, "CLASSIFYING",
+                                        "⏳ Analyzing this problem with AI... Hint will appear on next code change.");
                 }
 
                 if (detectedApproach == expectedOptimal) {
                         log.info("Student is aligned with optimal approach: {}", expectedOptimal);
                         session.resetMistakes();
                         session.setLastDetectedApproach(detectedApproach);
-                        return new CodeAnalysisResponse(false, null, null);
+                        // Show positive feedback so the overlay is never empty
+                        return new CodeAnalysisResponse(true, "GREAT_JOB",
+                                        "✅ Great approach! You're using " + expectedOptimal.name() +
+                                                        " which is the optimal strategy for this problem. Keep going!");
                 }
 
                 // Misaligned!
@@ -105,8 +136,8 @@ public class CodeAnalysisService {
                                 detectedApproach, expectedOptimal, mistakes);
 
                 // 5. Phase B: Conditional Hint Generation
-                // Threshold: only hint after 2 attempts/polls with same mistake
-                if (mistakes >= 2) {
+                // Threshold: hint after 1st misaligned poll (immediate feedback for testing)
+                if (mistakes >= 1) {
                         try {
                                 String hint = codeAnalyzer.generateHint(
                                                 expectedOptimal.name(),

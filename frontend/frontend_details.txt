@@ -1,0 +1,97 @@
+# Frontend / Extension Documentation
+
+## Overview
+The frontend is a Chrome Extension named "CodeMentor" designed to assist users with coding problems on various competitive programming platforms. It is built using React, TypeScript, and likely bundled with Vite.
+
+## Core Components
+
+### 1. Content Script (`src/content/contentScript.ts`)
+The content script is the bridge between the web page and the extension. It runs on specific coding platforms.
+
+*   **Platform Detection**: Automatically detects the current coding platform. Supported platforms:
+    *   LeetCode (`leetcode.com`)
+    *   GeeksforGeeks (`geeksforgeeks.org`)
+    *   HackerRank (`hackerrank.com`)
+    *   Codeforces (`codeforces.com`)
+    *   AtCoder (`atcoder.jp`)
+
+*   **Code Extraction**:
+    *   It attempts to find and hook into the code editor on the page.
+    *   Supports **Monaco Editor** (VS Code style, used by LeetCode), **CodeMirror** (5 & 6), and generic `<textarea>` or `contenteditable` elements.
+    *   In "Scraping Mode", it reads the DOM (e.g., `.view-line` elements) to get the code content since direct object access is restricted in content scripts.
+
+*   **Signal Extraction**:
+    *   Analyzes the user's code *in real-time* (polling every 5 seconds).
+    *   Extracts a "Signal Vector" containing:
+        *   `hasRecursion`: boolean (regex detection of recursive calls)
+        *   `hasDPArray`: boolean (detects `dp[]`, `memo[]`, `vector<...> dp`)
+        *   `hasMemo`: boolean (detects maps/caches)
+        *   `usesSort`: boolean (detects sorting functions)
+        *   `usesHashMap`: boolean (detects HashMaps/Dictionaries/Counters)
+        *   `loopDepth`: number (estimates nested loop depth)
+    *   Sends this data to the background script via `CAPTURE_SIGNAL`.
+
+*   **Overlay UI**:
+    *   Injects a floating overlay (`#codementor-overlay`) directly into the page.
+    *   Displays Hints, Progress, and Settings tabs within the page context.
+    *   Styles are injected dynamically via JavaScript.
+
+### 2. Background Script (`src/background/background.ts`)
+The background script manages the extension's lifecycle and state.
+
+*   **Message Handling**:
+    *   `CAPTURE_CODE`: Receives code snapshots from the content script and stores them in `chrome.storage.local`.
+    *   `CAPTURE_SIGNAL`: Receives signal vectors, forwards them to the backend API, and sends back hints to the content script.
+    *   `GET_HINTS` / `SEND_CODE_TO_AI`: Proxies API requests.
+    *   `SAVE_PROGRESS` / `GET_PROGRESS`: Manages user progress (attempts, hints used, time spent) locally.
+
+*   **Initialization**:
+    *   Sets default settings (theme, auto-capture, etc.) on installation.
+    *   Listens for tab updates to log supported sites.
+
+### 3. API Service (`src/services/apiService.ts`)
+Handles all communication with the backend.
+
+*   **Endpoints**:
+    *   `sendSignal(SignalRequest)`: POST to `/signal`. *This is configured to hit `http://localhost:8080/api/signal`.*
+    *   **Mocked Endpoints**: The following are currently verified as mocked (returning dummy data with delays):
+        *   `getHintsForCode` (Returns generic syntax/logic hints)
+        *   `analyzeCode` (Returns a random score and complexity)
+        *   `saveProgress` / `getProgress`
+        *   `authenticateUser` / `getUserProfile`
+
+### 4. Popup UI (`src/popup/App.tsx`)
+The extension's popup interface (when clicking the extension icon).
+
+*   **Structure**:
+    *   **Header**: Shows "CodeMentor" branding, extension toggle (Play/Pause), and current problem details (Title, Language, Attempts).
+    *   **Tabs**: 
+        1.  **Hints**: Displays automated hints.
+        2.  **Progress**: Shows usage stats.
+        3.  **Settings**: Configuration options.
+    *   **Footer**: Reset progress and Dashboard links.
+*   **Tech**: Built with React, Tailwind CSS for styling, and Framer Motion for animations.
+
+## Data Structures
+
+### SignalVector
+```typescript
+interface SignalVector {
+  hasRecursion: boolean;
+  hasDPArray: boolean;
+  hasMemo: boolean;
+  usesSort: boolean;
+  usesHashMap: boolean;
+  loopDepth: number;
+}
+```
+
+### ProblemInfo
+```typescript
+interface ProblemInfo {
+  id: string;      // e.g. "leetcode_two-sum"
+  title: string;
+  difficulty: string;
+  platform: string;
+}
+```
