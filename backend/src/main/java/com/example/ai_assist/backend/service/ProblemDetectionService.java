@@ -27,16 +27,23 @@ public class ProblemDetectionService {
 
     public ProblemDetectionResponse detect(ProblemDetectionRequest request) {
 
+        System.out.println("[DETECT] Received request: Title=" + request.getTitle() + 
+                           ", Platform=" + request.getPlatform() + 
+                           ", URL=" + request.getUrl());
+        System.out.println("[DETECT] Description (first 100 chars): " + 
+                           (request.getDescription() != null && request.getDescription().length() > 100 ? 
+                            request.getDescription().substring(0, 100) : request.getDescription()));
+
         ProblemContext context = new ProblemContext(
-                request.platform(),
-                request.title(),
-                request.description(),
-                request.url());
+                request.getPlatform(),
+                request.getTitle(),
+                request.getDescription(),
+                request.getUrl());
 
         repository.save(context);
 
         // Trigger async classification
-        processClassification(context.getId(), request.title(), request.description());
+        processClassification(context.getId(), request.getTitle(), request.getDescription());
 
         // Return immediately with PENDING status
         return new ProblemDetectionResponse(

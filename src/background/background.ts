@@ -29,8 +29,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       break;
 
     case 'CAPTURE_SIGNAL':
-  handleSignal(message.data, sender.tab?.id);
-  break;
+      handleSignal(message.data, sender.tab?.id);
+      break;
 
     case 'CAPTURE_PROBLEM':
       handleProblemCapture(message.data);
@@ -128,6 +128,21 @@ function handleCodeCapture(data: any, _tabId?: number) {
   });
 }
 
+// Helper to get a stable key for a problem URL (e.g., from LeetCode)
+function getProblemKey(url: string): string {
+  try {
+    const parsed = new URL(url);
+    if (parsed.hostname.includes('leetcode.com')) {
+      // Extract the slug (e.g., /problems/add-two-numbers/description/ -> add-two-numbers)
+      const match = parsed.pathname.match(/\/problems\/([^/]+)/);
+      return match ? `leetcode_${match[1]}` : url;
+    }
+    return url;
+  } catch {
+    return url;
+  }
+}
+
 function handleProblemCapture(data: any) {
   console.log('Problem captured:', data);
 
@@ -135,10 +150,10 @@ function handleProblemCapture(data: any) {
     console.log('Problem context established:', response.problemContextId);
 
     // Store context ID associated with the problem URL or ID
-    // We'll store it in a map: problemUrl -> contextId
     chrome.storage.local.get(['problemContextMap'], (result) => {
       const map = result.problemContextMap || {};
-      map[data.url] = response.problemContextId; // Use URL as key
+      const key = getProblemKey(data.url);
+      map[key] = response.problemContextId;
       chrome.storage.local.set({ problemContextMap: map });
     });
 
@@ -149,12 +164,18 @@ function handleProblemCapture(data: any) {
 
 function handleCodeUpdate(data: any, tabId?: number) {
   // data should contain { sessionId, language, rawCode, signalVector, url }
-  // We need to fetch the problemContextId using the URL
   console.log('Code update captured:', data);
 
   chrome.storage.local.get(['problemContextMap'], (result) => {
     const map = result.problemContextMap || {};
-    const problemContextId = map[data.url];
+    const key = getProblemKey(data.url);
+    const problemContextId = map[key];
+
+    if (!problemContextId) {
+      console.warn('No problem context ID found for key:', key);
+      // Optional: Re-trigger capture if missing?
+      return;
+    }
 
     const updateRequest = {
       sessionId: data.sessionId,
@@ -165,21 +186,29 @@ function handleCodeUpdate(data: any, tabId?: number) {
     };
 
     apiService.analyzeCode(updateRequest).then(response => {
-  console.log('Received analysis response:', response);
+      console.log('Received analysis response from backend:', response);
 
-  // ⭐ STORE HINTS FOR POPUP
-  chrome.storage.local.set({ latestHints: response.hints || [] });
+      // ⭐ STORE HINTS FOR POPUP
+      chrome.storage.local.set({ latestHints: response.hints || [] });
 
-  if (tabId) {
-    chrome.tabs.sendMessage(tabId, {
-      type: 'HINT_UPDATE',
-      data: response
+      if (tabId !== undefined && tabId !== null) {
+        console.log('SENDING HINT_UPDATE TO TAB ID:', tabId, 'Data:', response);
+        chrome.tabs.sendMessage(tabId, {
+          type: 'HINT_UPDATE',
+          data: response
+        }, (result) => {
+          if (chrome.runtime.lastError) {
+            console.error('Error sending message to tab:', chrome.runtime.lastError.message);
+          } else {
+            console.log('Message sent successfully to tab, response:', result);
+          }
+        });
+      } else {
+        console.warn('Cannot send HINT_UPDATE: tabId is missing', { tabId, response });
+      }
+    }).catch(err => {
+      console.error('Error in analyzeCode promise chain:', err);
     });
-  }
-}).catch(err => {
-  console.error('Error analyzing code:', err);
-});
-
   });
 }
 

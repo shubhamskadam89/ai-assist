@@ -27,29 +27,39 @@ public class CodeAnalysisService {
 
     public CodeAnalysisResponse analyze(CodeAnalysisRequest request) {
 
-        System.out.println("🔥 ANALYZE CALLED");
+        System.out.println("[ANALYZE] CALLED");
 
-        ProblemContext context = contextRepository.findById(request.problemContextId())
-                .orElseThrow();
+        if (request.getProblemContextId() == null) {
+            System.err.println("[ERROR] Problem Context ID is null");
+            return new CodeAnalysisResponse(false, null, "Problem context missing");
+        }
+
+        ProblemContext context = contextRepository.findById(request.getProblemContextId())
+                .orElse(null);
+
+        if (context == null) {
+            System.err.println("[ERROR] Context not found for ID: " + request.getProblemContextId());
+            return new CodeAnalysisResponse(false, null, "Problem context not found");
+        }
 
         // Save snapshot
         snapshotRepository.save(new CodeSnapshot(
-                request.sessionId(),
+                request.getSessionId(),
                 context,
-                request.language(),
-                request.rawCode()
+                request.getLanguage(),
+                request.getRawCode()
         ));
 
-        System.out.println("📄 Problem: " + context.getDescription());
-        System.out.println("💻 Code: " + request.rawCode());
+        System.out.println("[Problem] " + context.getDescription());
+        System.out.println("[Code] " + request.getRawCode());
 
         try {
             String hint = ollamaService.generateHint(
                     context.getDescription(),
-                    request.rawCode()
+                    request.getRawCode()
             );
 
-            System.out.println("🤖 OLLAMA RESPONSE: " + hint);
+            System.out.println("[OLLAMA] RESPONSE: " + hint);
 
             return new CodeAnalysisResponse(true, "hint", hint);
 

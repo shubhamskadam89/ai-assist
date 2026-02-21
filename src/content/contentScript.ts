@@ -110,6 +110,7 @@ class CodeCaptureService {
           }
         }
       } else if (msg?.type === 'HINT_UPDATE') {
+        console.log('CONTENT SCRIPT: Received HINT_UPDATE message', msg.data);
         this.updateHints(msg.data);
       }
     });
@@ -430,33 +431,22 @@ class CodeCaptureService {
     let difficulty = 'unknown';
 
     if (hostname.includes('leetcode.com')) {
-      // Robust regex that handles potential missing trailing slash
       const urlMatch = window.location.pathname.match(/problems\/([^/]+)/);
       const slug = urlMatch?.[1] || 'unknown';
+      id = `leetcode_${slug}`;
 
-      // Map slug → problem number (TEMP: hardcode Coin Change)
-      // Coin Change = 322
-      if (slug === 'coin-change') {
-        id = 'leetcode_322';
-      } else if (slug === 'two-sum') {
-        id = 'leetcode_1';
-      } else {
-        id = `leetcode_${slug}`;
-      }
-
+      // IMPROVED TITLE SELECTORS
       const titleElement = document.querySelector('[data-cy="question-title"]') ||
-        document.querySelector('.css-v3d350');
+        document.querySelector('.text-title-large') ||
+        document.querySelector('.css-v3d350') ||
+        document.querySelector('div[class*="title"]');
+
       title = titleElement?.textContent?.trim() || 'LeetCode Problem';
     } else if (hostname.includes('geeksforgeeks.org')) {
       const titleElement = document.querySelector('.problem-statement h1') ||
         document.querySelector('.gfg_h1');
       title = titleElement?.textContent?.trim() || 'GeeksforGeeks Problem';
       id = `gfg_${title.toLowerCase().replace(/\s+/g, '_')}`;
-    } else if (hostname.includes('hackerrank.com')) {
-      const titleElement = document.querySelector('.challenge-title') ||
-        document.querySelector('h1');
-      title = titleElement?.textContent?.trim() || 'HackerRank Problem';
-      id = `hackerrank_${title.toLowerCase().replace(/\s+/g, '_')}`;
     }
 
     return {
@@ -472,18 +462,37 @@ class CodeCaptureService {
     let description = '';
     let constraints = '';
 
-    // Basic description scraping (can be expanded per platform)
-    const metaDesc = document.querySelector('meta[name="description"]');
-    if (metaDesc) description = metaDesc.getAttribute('content') || '';
+    // PLATFORM SPECIFIC SCRAPING
+    if (window.location.hostname.includes('leetcode.com')) {
+      // Improved LeetCode selectors
+      const descElement = document.querySelector('[data-track-load="description_content"]') ||
+        document.querySelector('.xFuwe') ||
+        document.querySelector('.elfjS') ||
+        document.querySelector('.question-content') ||
+        document.querySelector('div[class*="description"]');
 
-    return {
+      if (descElement) {
+        description = descElement.textContent || '';
+      }
+    }
+
+    // Fallback: Basic description scraping
+    if (!description) {
+      const metaDesc = document.querySelector('meta[name="description"]');
+      if (metaDesc) description = metaDesc.getAttribute('content') || '';
+    }
+
+    const problem = {
       platform: info.platform,
       title: info.title,
-      description: description,
+      description: description.trim(),
       difficulty: info.difficulty,
       constraints: constraints,
       url: window.location.href
     };
+
+    console.log('CAPTURED PROBLEM DETAILS:', problem);
+    return problem;
   }
 
   private extractAndSendProblem() {
@@ -942,35 +951,36 @@ class CodeCaptureService {
     });
   }
 
-  private updateHints(hintResponse: any): void {
-    console.log('HINT RESPONSE RECEIVED:', hintResponse);
+  private updateHints(analysis: any): void {
+    console.log('HINT RESPONSE RECEIVED:', analysis);
     const container = this.overlayContainer?.querySelector('#hints-list-container');
     if (!container) return;
 
     container.innerHTML = '';
 
-    if (!hintResponse || !hintResponse.showHint) {
+    const hints = analysis?.hints || [];
+
+    if (hints.length === 0) {
       container.innerHTML = '<div class="hint-item"><div class="hint-message">No specific hints yet. Keep going!</div></div>';
       return;
     }
 
-    const div = document.createElement('div');
-    div.className = 'hint-item';
+    hints.forEach((hint: any) => {
+      const div = document.createElement('div');
+      div.className = 'hint-item';
 
-    const typeDiv = document.createElement('div');
-    typeDiv.className = `hint-type ${hintResponse.level?.toLowerCase() || 'info'}`;
-    typeDiv.textContent = hintResponse.level || 'Hint';
+      const typeDiv = document.createElement('div');
+      typeDiv.className = `hint-type ${hint.type?.toLowerCase() || 'logic'}`;
+      typeDiv.textContent = hint.type || 'Hint';
 
-    const msgDiv = document.createElement('div');
-    msgDiv.className = 'hint-message';
-    msgDiv.textContent = hintResponse.message || '';
+      const msgDiv = document.createElement('div');
+      msgDiv.className = 'hint-message';
+      msgDiv.textContent = hint.message || '';
 
-    div.appendChild(typeDiv);
-    div.appendChild(msgDiv);
-    container.appendChild(div);
-
-    // Auto-show overlay if high priority?
-    // if (hintResponse.level === 'CRITICAL' && !this.isOverlayVisible) { ... }
+      div.appendChild(typeDiv);
+      div.appendChild(msgDiv);
+      container.appendChild(div);
+    });
   }
 
   private toggleOverlay(): void {

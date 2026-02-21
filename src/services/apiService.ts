@@ -88,75 +88,77 @@ class ApiService {
     }
   }
 
- async sendSignal(request: LocalSignalRequest): Promise<any> {
-  try {
-    console.log("Sending signal to backend:", request);
+  async sendSignal(request: LocalSignalRequest): Promise<any> {
+    try {
+      console.log("Sending signal to backend:", request);
 
-    return await this.makeRequest('/signal', {
-      method: 'POST',
-      body: JSON.stringify(request)
-    });
+      return await this.makeRequest('/signal', {
+        method: 'POST',
+        body: JSON.stringify(request)
+      });
 
-  } catch (error) {
-    console.error('Signal API failed:', error);
-    return { showHint: false };
+    } catch (error) {
+      console.error('Signal API failed:', error);
+      return { showHint: false };
+    }
   }
-}
 
 
   async detectProblem(problem: ExtractedProblem): Promise<{ problemContextId: string }> {
-  try {
-    console.log('Detecting problem (REAL API):', problem);
+    try {
+      console.log('Detecting problem (REAL API):', problem);
 
-    return await this.makeRequest<{ problemContextId: string }>('/problem/detect', {
-      method: 'POST',
-      body: JSON.stringify({
-        problemStatement: problem.description,
-        language: problem.platform
-      })
-    });
+      return await this.makeRequest<{ problemContextId: string }>('/problem/detect', {
+        method: 'POST',
+        body: JSON.stringify({
+          title: problem.title,
+          description: problem.description,
+          platform: problem.platform,
+          url: problem.url
+        })
+      });
 
-  } catch (error) {
-    console.error('Failed to detect problem:', error);
-    throw error;
+    } catch (error) {
+      console.error('Failed to detect problem:', error);
+      throw error;
+    }
   }
-}
 
 
   async analyzeCode(request: CodeUpdateRequest): Promise<CodeAnalysis> {
-  try {
-    console.log('Sending to backend:', request)
+    try {
+      console.log('Sending to backend:', request)
 
-    const response = await this.makeRequest<any>('/code/analyze', {
-      method: 'POST',
-      body: JSON.stringify(request)
-    })
+      const response = await this.makeRequest<any>('/code/analyze', {
+        method: 'POST',
+        body: JSON.stringify(request)
+      })
 
-    return {
-      hints: [{
-        id: 1,
-        type: 'logic',
-        message: response.message,
-        severity: 'medium',
-        timestamp: Date.now()
-      }],
-      score: 80,
-      suggestions: [],
-      complexity: 'O(n)'
+      return {
+        hints: response.message ? [{
+          id: Date.now(),
+          type: 'logic',
+          message: response.message,
+          severity: 'medium',
+          timestamp: Date.now()
+        }] : [],
+        score: 80,
+        suggestions: [],
+        complexity: 'O(n)'
+      }
+
+    } catch (error) {
+      console.error('Backend call failed:', error)
+      throw error
     }
-
-  } catch (error) {
-    console.error('Backend call failed:', error)
-    throw error
   }
-}
 
 
   // Code Analysis API
   async getHintsForCode(_code: string, _language: string, _problemId?: string): Promise<Hint[]> {
-  console.log('Backend hint API not implemented yet');
-  return [];
-}
+    console.log('Backend hint API not implemented yet');
+    return [];
+  }
 
   async analyzeCodeLegacy(code: string, language: string, problemId?: string): Promise<CodeAnalysis> {
     try {
