@@ -30,7 +30,22 @@ public class DashboardController {
                 Optional<StudentProfile> profileOpt = studentProfileRepository.findByHandle(handle);
 
                 if (profileOpt.isEmpty()) {
-                        return ResponseEntity.notFound().build();
+                        // Return an empty template rather than 404 so dashboard can still load
+                        DashboardStatsResponse empty = new DashboardStatsResponse();
+                        empty.setStudentName("New Student");
+                        empty.setHandle(handle);
+                        empty.setTotalActiveDays(0);
+                        empty.setMaxStreak(0);
+                        empty.setCurrentStreak(0);
+                        empty.setClassTestsTaken(0);
+                        empty.setAvgTestScore(0);
+                        empty.setDsaStats(Arrays.asList(
+                                        Map.of("name", "Easy", "value", 0, "color", "#10b981"),
+                                        Map.of("name", "Medium", "value", 0, "color", "#eab308"),
+                                        Map.of("name", "Hard", "value", 0, "color", "#ef4444")));
+                        empty.setFundamentalsStats(List.of(
+                                        Map.of("name", "Completed", "value", 0, "color", "#10b981")));
+                        return ResponseEntity.ok(empty);
                 }
 
                 StudentProfile profile = profileOpt.get();
