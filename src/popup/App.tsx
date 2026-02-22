@@ -1,12 +1,12 @@
 import React, { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { 
-  Code2, 
-  Lightbulb, 
-  BarChart3, 
-  Settings, 
-  Play, 
-  Pause, 
+import {
+  Code2,
+  Lightbulb,
+  BarChart3,
+  Settings,
+  Play,
+  Pause,
   RotateCcw,
   ExternalLink,
   CheckCircle,
@@ -22,12 +22,12 @@ type TabType = 'hints' | 'progress' | 'settings'
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('hints')
-  const { 
-    isEnabled, 
-    currentProblem, 
-    progress, 
-    toggleExtension, 
-    resetProgress 
+  const {
+    isEnabled,
+    currentProblem,
+    progress,
+    toggleExtension,
+    resetProgress
   } = useExtensionState()
 
   const tabs = [
@@ -37,63 +37,76 @@ const App: React.FC = () => {
   ]
 
   return (
-    <div className="w-full h-full bg-gray-50 dark:bg-gray-900 flex flex-col">
+    <div className="w-full h-full bg-zinc-50 dark:bg-zinc-950 flex flex-col font-sans transition-colors duration-200">
       {/* Header */}
-      <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-4 rounded-t-lg">
+      <div className="bg-white/70 dark:bg-zinc-900/70 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800 p-4 sticky top-0 z-10">
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <Code2 className="w-6 h-6" />
-            <h1 className="text-lg font-semibold">CodeMentor</h1>
+          <div className="flex items-center space-x-2 text-zinc-900 dark:text-zinc-100">
+            <div className="p-1.5 bg-zinc-900 dark:bg-zinc-100 rounded-md text-white dark:text-zinc-900">
+              <Code2 className="w-5 h-5" />
+            </div>
+            <h1 className="text-base font-medium tracking-tight">CodeMentor</h1>
           </div>
           <button
             onClick={toggleExtension}
-            className={`p-2 rounded-lg transition-colors ${
-              isEnabled 
-                ? 'bg-green-500 hover:bg-green-600' 
-                : 'bg-gray-500 hover:bg-gray-600'
-            }`}
+            className={`p-2 rounded-lg transition-all duration-300 shadow-sm ${isEnabled
+                ? 'bg-emerald-500 text-white hover:bg-emerald-600 shadow-emerald-500/20'
+                : 'bg-zinc-200 text-zinc-500 hover:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700'
+              }`}
             title={isEnabled ? 'Extension Active' : 'Extension Inactive'}
           >
             {isEnabled ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
           </button>
         </div>
-        
+
         {currentProblem && (
-          <div className="mt-3 p-3 bg-white/10 rounded-lg backdrop-blur-sm">
-            <div className="flex items-center space-x-2 text-sm">
-              <Target className="w-4 h-4" />
-              <span className="truncate">{currentProblem.title}</span>
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-4 p-3 bg-zinc-100/80 dark:bg-zinc-800/80 rounded-xl border border-zinc-200/60 dark:border-zinc-700/60 flex flex-col space-y-2"
+          >
+            <div className="flex items-center space-x-2 text-sm text-zinc-800 dark:text-zinc-200">
+              <Target className="w-4 h-4 text-zinc-500 dark:text-zinc-400" />
+              <span className="truncate font-medium">{currentProblem.title}</span>
             </div>
-            <div className="flex items-center space-x-4 mt-2 text-xs opacity-90">
+            <div className="flex items-center space-x-4 text-xs text-zinc-500 dark:text-zinc-400">
               <span className="flex items-center space-x-1">
-                <Clock className="w-3 h-3" />
+                <Clock className="w-3.5 h-3.5" />
                 <span>{currentProblem.language}</span>
               </span>
-              <span className="flex items-center space-x-1">
-                <CheckCircle className="w-3 h-3" />
+              <span className="flex items-center space-x-1 bg-zinc-200/50 dark:bg-zinc-700/50 px-1.5 py-0.5 rounded-full">
+                <CheckCircle className="w-3.5 h-3.5" />
                 <span>{progress[currentProblem.id]?.attempts || 0} attempts</span>
               </span>
             </div>
-          </div>
+          </motion.div>
         )}
       </div>
 
       {/* Tab Navigation */}
-      <div className="flex border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+      <div className="flex border-b border-zinc-200 dark:border-zinc-800 bg-white/50 dark:bg-zinc-900/50 backdrop-blur-sm">
         {tabs.map((tab) => {
           const Icon = tab.icon
+          const isActive = activeTab === tab.id
           return (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 flex items-center justify-center space-x-2 py-3 px-4 text-sm font-medium transition-colors ${
-                activeTab === tab.id
-                  ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50 dark:bg-blue-900/20'
-                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-              }`}
+              className={`flex-1 relative flex items-center justify-center space-x-2 py-3.5 px-4 text-sm font-medium transition-colors ${isActive
+                  ? 'text-zinc-900 dark:text-zinc-100'
+                  : 'text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-300'
+                }`}
             >
-              <Icon className="w-4 h-4" />
+              <Icon className={`w-4 h-4 ${isActive ? 'text-zinc-900 dark:text-zinc-100' : 'text-zinc-400 dark:text-zinc-500'}`} />
               <span>{tab.label}</span>
+              {isActive && (
+                <motion.div
+                  layoutId="activeTabIndicator"
+                  className="absolute bottom-0 left-0 right-0 h-0.5 bg-zinc-900 dark:bg-zinc-100 rounded-t-full"
+                  initial={false}
+                  transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                />
+              )}
             </button>
           )
         })}
@@ -118,24 +131,24 @@ const App: React.FC = () => {
       </div>
 
       {/* Footer */}
-      <div className="p-3 bg-gray-100 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
-        <div className="flex items-center justify-between text-xs text-gray-600 dark:text-gray-400">
+      <div className="p-3 bg-transparent border-t border-zinc-200 dark:border-zinc-800 mt-auto">
+        <div className="flex items-center justify-between text-[11px] font-medium text-zinc-500 dark:text-zinc-400">
           <span>v1.0.0</span>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-4">
             <button
               onClick={resetProgress}
-              className="flex items-center space-x-1 hover:text-gray-900 dark:hover:text-gray-200 transition-colors"
+              className="flex items-center space-x-1.5 hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors"
               title="Reset Progress"
             >
-              <RotateCcw className="w-3 h-3" />
+              <RotateCcw className="w-3.5 h-3.5" />
               <span>Reset</span>
             </button>
             <a
               href="#"
-              className="flex items-center space-x-1 hover:text-gray-900 dark:hover:text-gray-200 transition-colors"
+              className="flex items-center space-x-1.5 hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors"
               title="Open Dashboard"
             >
-              <ExternalLink className="w-3 h-3" />
+              <ExternalLink className="w-3.5 h-3.5" />
               <span>Dashboard</span>
             </a>
           </div>

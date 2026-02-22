@@ -28,10 +28,12 @@ class CodeCaptureService {
   private currentEditor: CodeEditor | null = null;
   private overlayContainer: HTMLElement | null = null;
   private isOverlayVisible = false;
-  private pollingTimer: number | null = null;
   private lastCapturedCode = '';
   private enabled = true;
   private sessionId: string | null = null;
+  private lastHintTimestamp: number = Date.now();
+  private lastHintCode: string = '';
+  private uiUpdateTimer: number | null = null;
 
 
   constructor() {
@@ -100,12 +102,12 @@ class CodeCaptureService {
               content.style.display = 'block'
               toggleBtn.textContent = '−'
               this.isOverlayVisible = true
-              this.startPolling();
+              this.startUiLoop();
             } else {
               content.style.display = 'none'
               toggleBtn.textContent = '+'
               this.isOverlayVisible = false
-              this.stopPolling();
+              this.stopUiLoop();
             }
           }
         }
@@ -115,9 +117,9 @@ class CodeCaptureService {
       }
     });
 
-    // Start polling if enabled
+    // Initialize UI loop for button state
     if (this.enabled) {
-      this.startPolling();
+      this.startUiLoop();
     }
   }
 
@@ -277,7 +279,6 @@ class CodeCaptureService {
         off: () => { }
       };
       console.log('CodeMirror 6 / Generic setup complete');
-      this.setupEditorListeners();
       return;
     }
 
@@ -291,8 +292,6 @@ class CodeCaptureService {
         on: (event: string, callback: Function) => codeMirror.on(event, callback),
         off: (event: string, callback: Function) => codeMirror.off(event, callback)
       };
-
-      this.setupEditorListeners();
     }
   }
 
@@ -314,32 +313,53 @@ class CodeCaptureService {
         }
       }
     };
-
-    this.setupEditorListeners();
   }
 
-  private setupEditorListeners(): void {
-    if (!this.currentEditor) return;
+  private startUiLoop(): void {
+    if (this.uiUpdateTimer) clearInterval(this.uiUpdateTimer);
 
-    // We don't need change listeners anymore since we are polling
-    // But we might want to reset the polling timer on activity to avoid idle waste?
-    // For now, simple polling is enough as per requirement.
-    console.log('Editor listeners setup complete (Polling mode)');
+    this.uiUpdateTimer = window.setInterval(() => {
+      this.updateHintButtonState();
+    }, 1000);
   }
 
-  private startPolling(): void {
-    if (this.pollingTimer) clearInterval(this.pollingTimer);
-
-    // Poll every 5 seconds
-    this.pollingTimer = window.setInterval(() => {
-      this.captureSignal();
-    }, 5000);
+  private stopUiLoop(): void {
+    if (this.uiUpdateTimer) {
+      clearInterval(this.uiUpdateTimer);
+      this.uiUpdateTimer = null;
+    }
   }
 
-  private stopPolling(): void {
-    if (this.pollingTimer) {
-      clearInterval(this.pollingTimer);
-      this.pollingTimer = null;
+  private updateHintButtonState(): void {
+    if (!this.overlayContainer || !this.currentEditor) return;
+
+    const btn = this.overlayContainer.querySelector('#codementor-get-hint') as HTMLButtonElement | null;
+    if (!btn) return;
+
+    if (!this.enabled) {
+      btn.disabled = true;
+      btn.textContent = 'Extension Disabled';
+      return;
+    }
+
+    const now = Date.now();
+    const timeElapsed = now - this.lastHintTimestamp;
+    const cooldownMs = 60000; // 60 seconds
+
+    if (timeElapsed < cooldownMs) {
+      const remainingSeconds = Math.ceil((cooldownMs - timeElapsed) / 1000);
+      btn.disabled = true;
+      btn.textContent = `Give Hint (Wait ${remainingSeconds}s)`;
+    } else {
+      // Cooldown is over. Check if code has changed.
+      const currentCode = this.currentEditor.getValue().trim();
+      if (currentCode === this.lastHintCode.trim()) {
+        btn.disabled = true;
+        btn.textContent = 'Write code to enable hint...';
+      } else {
+        btn.disabled = false;
+        btn.textContent = 'Give Hint';
+      }
     }
   }
 
@@ -358,8 +378,8 @@ class CodeCaptureService {
 
       // Check if extension context is valid
       if (!chrome.runtime?.id) {
-        console.warn('Extension context invalidated, stopping polling');
-        this.stopPolling();
+        console.warn('Extension context invalidated, stopping UI loop');
+        this.stopUiLoop();
         return;
       }
 
@@ -380,7 +400,7 @@ class CodeCaptureService {
       console.error('Error during signal capture:', error);
       // Stop polling if we hit a critical error (like context invalidation)
       if (error instanceof Error && error.message.includes('Extension context invalidated')) {
-        this.stopPolling();
+        this.stopUiLoop();
       }
     }
   }
@@ -656,6 +676,33 @@ class CodeCaptureService {
       }
 
       /* Hints Tab */
+      .hint-action-container {
+        padding: 0 0 16px 0;
+        border-bottom: 1px solid #e5e7eb;
+        margin-bottom: 16px;
+      }
+      
+      .hint-action-btn {
+        width: 100%;
+        padding: 10px;
+        background: #3b82f6;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+
+      .hint-action-btn:hover:not(:disabled) {
+        background: #2563eb;
+      }
+
+      .hint-action-btn:disabled {
+        background: #9ca3af;
+        cursor: not-allowed;
+      }
+
       .hints-list {
         display: flex;
         flex-direction: column;
@@ -813,6 +860,10 @@ class CodeCaptureService {
           background: #111827;
           border-color: #374151;
         }
+
+        .hint-action-container {
+          border-color: #374151;
+        }
         
         .hint-message,
         .stat-label,
@@ -890,9 +941,12 @@ class CodeCaptureService {
             <button class="tab-btn" data-tab="settings">Settings</button>
           </div>
           <div class="tab-content" id="hints-content">
+            <div class="hint-action-container">
+               <button id="codementor-get-hint" class="hint-action-btn" disabled>Give Hint (Wait 60s)</button>
+            </div>
             <div class="hints-list" id="hints-list-container">
               <div class="hint-item">
-                <div class="hint-message">Analyze code to get real-time hints...</div>
+                <div class="hint-message">Welcome! Start coding to unlock hints.</div>
               </div>
             </div>
           </div>
@@ -941,14 +995,23 @@ class CodeCaptureService {
       this.toggleOverlay();
     });
 
-    // Tab buttons
-    const tabBtns = this.overlayContainer.querySelectorAll('.tab-btn');
-    tabBtns.forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        const tab = (e.target as HTMLElement).dataset.tab;
-        if (tab) this.switchTab(tab);
+    // Initialize Button Event
+    const hintBtn = this.overlayContainer.querySelector('#codementor-get-hint') as HTMLButtonElement | null;
+    if (hintBtn) {
+      hintBtn.addEventListener('click', () => {
+        if (!this.currentEditor || hintBtn.disabled) return;
+
+        // Disable button immediately to prevent spam
+        hintBtn.disabled = true;
+        hintBtn.textContent = 'Analyzing...';
+
+        const currentCode = this.currentEditor.getValue().trim();
+        this.lastHintCode = currentCode;
+        this.lastHintTimestamp = Date.now();
+
+        this.captureSignal();
       });
-    });
+    }
   }
 
   private updateHints(analysis: any): void {
@@ -998,21 +1061,6 @@ class CodeCaptureService {
       content.style.display = 'none';
       toggleBtn.textContent = '+';
     }
-  }
-
-  private switchTab(tabName: string): void {
-    if (!this.overlayContainer) return;
-
-    // Update tab buttons
-    const tabBtns = this.overlayContainer.querySelectorAll('.tab-btn');
-    tabBtns.forEach(btn => btn.classList.remove('active'));
-    this.overlayContainer.querySelector(`[data-tab="${tabName}"]`)?.classList.add('active');
-
-    // Update tab content
-    const tabContents = this.overlayContainer.querySelectorAll('.tab-content');
-    tabContents.forEach(content => (content as HTMLElement).style.display = 'none');
-    const activeContent = this.overlayContainer.querySelector(`#${tabName}-content`) as HTMLElement;
-    if (activeContent) activeContent.style.display = 'block';
   }
 
   private setupKeyboardShortcuts(): void {

@@ -53,16 +53,16 @@ const SettingsPanel: React.FC = () => {
     description: string
     children: React.ReactNode
   }> = ({ icon, title, description, children }) => (
-    <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-      <div className="flex items-center space-x-3">
-        <div className="p-2 bg-gray-100 dark:bg-gray-700 rounded-lg">
+    <div className="flex items-center justify-between p-3.5 bg-white dark:bg-zinc-800/50 rounded-xl border border-zinc-200/80 dark:border-zinc-700/80 shadow-sm transition-shadow hover:shadow-md">
+      <div className="flex items-center space-x-3.5">
+        <div className="p-2 bg-zinc-100 dark:bg-zinc-700/50 rounded-lg text-zinc-600 dark:text-zinc-300">
           {icon}
         </div>
         <div>
-          <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">
+          <h3 className="text-sm font-medium tracking-tight text-zinc-900 dark:text-zinc-100">
             {title}
           </h3>
-          <p className="text-xs text-gray-600 dark:text-gray-400">
+          <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
             {description}
           </p>
         </div>
@@ -77,14 +77,12 @@ const SettingsPanel: React.FC = () => {
   }> = ({ enabled, onChange }) => (
     <button
       onClick={() => onChange(!enabled)}
-      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-        enabled ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'
-      }`}
+      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-300 focus-visible:ring-offset-2 ${enabled ? 'bg-zinc-900 dark:bg-zinc-100' : 'bg-zinc-200 dark:bg-zinc-700'
+        }`}
     >
       <span
-        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-          enabled ? 'translate-x-6' : 'translate-x-1'
-        }`}
+        className={`inline-block h-4 w-4 transform rounded-full bg-white dark:bg-zinc-900 transition-transform ${enabled ? 'translate-x-6' : 'translate-x-1'
+          } shadow-sm`}
       />
     </button>
   )
@@ -93,11 +91,11 @@ const SettingsPanel: React.FC = () => {
     <div className="h-full flex flex-col">
 
       {/* Header */}
-      <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+      <div className="p-4 border-b border-zinc-200 dark:border-zinc-800">
+        <h2 className="text-lg font-medium tracking-tight text-zinc-900 dark:text-zinc-100">
           Settings
         </h2>
-        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+        <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-1">
           Customize your CodeMentor experience
         </p>
       </div>
@@ -107,7 +105,7 @@ const SettingsPanel: React.FC = () => {
 
         {/* General */}
         <div>
-          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+          <h3 className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-3">
             General
           </h3>
 
@@ -126,15 +124,15 @@ const SettingsPanel: React.FC = () => {
 
             <SettingItem
               icon={localSettings.theme === 'dark'
-                ? <Moon className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-                : <Sun className="w-4 h-4 text-gray-600 dark:text-gray-400" />}
+                ? <Moon className="w-4 h-4" />
+                : <Sun className="w-4 h-4" />}
               title="Theme"
               description="Choose your preferred theme"
             >
               <select
                 value={localSettings.theme}
                 onChange={(e) => handleSettingChange('theme', e.target.value)}
-                className="text-sm border border-gray-300 dark:border-gray-600 rounded-md px-2 py-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                className="text-sm font-medium border border-zinc-300 dark:border-zinc-700 rounded-md px-2 py-1.5 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-300 outline-none transition-shadow"
               >
                 <option value="light">Light</option>
                 <option value="dark">Dark</option>
@@ -158,7 +156,7 @@ const SettingsPanel: React.FC = () => {
 
         {/* Features */}
         <div>
-          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+          <h3 className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-3 mt-6">
             Features
           </h3>
 
@@ -202,7 +200,7 @@ const SettingsPanel: React.FC = () => {
 
         {/* Privacy */}
         <div>
-          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+          <h3 className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-3 mt-6">
             Privacy
           </h3>
 
@@ -220,7 +218,7 @@ const SettingsPanel: React.FC = () => {
 
         {/* Reset */}
         <div>
-          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+          <h3 className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-3 mt-6">
             Data
           </h3>
 
@@ -231,7 +229,7 @@ const SettingsPanel: React.FC = () => {
           >
             <button
               onClick={resetProgress}
-              className="px-3 py-1 text-sm bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
+              className="px-3 py-1.5 text-xs font-medium bg-red-500/10 text-red-600 dark:text-red-400 rounded-md hover:bg-red-500/20 transition-colors"
             >
               Reset
             </button>
@@ -240,7 +238,7 @@ const SettingsPanel: React.FC = () => {
 
         {/* About */}
         <div>
-          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+          <h3 className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-3 mt-6">
             About
           </h3>
 
@@ -267,8 +265,8 @@ const SettingsPanel: React.FC = () => {
       </div>
 
       {/* Footer */}
-      <div className="p-4 border-t border-gray-200 dark:border-gray-700 text-center">
-        <p className="text-xs text-gray-600 dark:text-gray-400">
+      <div className="p-4 border-t border-zinc-200 dark:border-zinc-800 text-center">
+        <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
           Made with ❤️ for developers
         </p>
       </div>
