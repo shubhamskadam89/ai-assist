@@ -20,6 +20,12 @@ public class StudentProfile {
     private int classTestsTaken;
     private double avgTestScore;
 
+    @OneToMany(mappedBy = "studentProfile", cascade = CascadeType.ALL, orphanRemoval = true)
+    private java.util.List<StudentPlatformIdentity> platformIdentities = new java.util.ArrayList<>();
+
+    @OneToMany(mappedBy = "studentProfile", cascade = CascadeType.ALL, orphanRemoval = true)
+    private java.util.List<ProblemAttempt> attempts = new java.util.ArrayList<>();
+
     public StudentProfile() {
     }
 
@@ -96,5 +102,21 @@ public class StudentProfile {
 
     public void setAvgTestScore(double avgTestScore) {
         this.avgTestScore = avgTestScore;
+    }
+
+    public java.util.List<StudentPlatformIdentity> getPlatformIdentities() {
+        return platformIdentities;
+    }
+
+    public void setPlatformIdentities(java.util.List<StudentPlatformIdentity> platformIdentities) {
+        this.platformIdentities = platformIdentities;
+    }
+
+    public java.util.List<ProblemAttempt> getAttempts() {
+        return attempts;
+    }
+
+    public void setAttempts(java.util.List<ProblemAttempt> attempts) {
+        this.attempts = attempts;
     }
 }
