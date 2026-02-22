@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import {
     Home, User, Building, FolderGit2, Compass, FileText,
-    Calendar, Trophy, HelpCircle, MessageSquare, Edit,
+    Calendar, Trophy, HelpCircle, MessageSquare,
     LogOut, CheckCircle2, Search, Sun, MoveUpRight,
-    Menu, X, TerminalSquare, Activity
+    Menu, X, Activity
 } from 'lucide-react'
 import {
     LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -34,9 +34,6 @@ const fundamentalsDonutData = [
     { name: 'HackerRank', value: 44, color: '#eab308' }
 ]
 
-const cpDonutData = [
-    { name: 'CodeChef', value: 115, color: '#10b981' }
-]
 
 // Function to simulate a Github styled contribution heatmap grid
 const generateHeatmap = () => {
@@ -61,13 +58,8 @@ export default function Dashboard() {
     const [sidebarOpen, setSidebarOpen] = useState(true)
     const heatmapData = generateHeatmap();
 
-    // Load basic saved local data from extension state to show *something* real
-    const [localProblemsSolved, setLocalProblemsSolved] = useState(0)
-
     useEffect(() => {
         chrome.storage?.local?.get(['userProgress', 'settings'], (result) => {
-            const data = result.userProgress || {}
-            setLocalProblemsSolved(Object.keys(data).length)
             if (result.settings?.theme === 'dark') {
                 document.documentElement.classList.add('dark')
             }
@@ -93,20 +85,19 @@ export default function Dashboard() {
                         <NavItem icon={<User className="w-4 h-4" />} label="Portfolio" active />
                     </NavGroup>
 
-                    <NavGroup title="QUESTION TRACKER">
-                        <NavItem icon={<Building className="w-4 h-4" />} label="Company Wise Kit" />
-                        <NavItem icon={<FolderGit2 className="w-4 h-4" />} label="My Workspace" />
-                        <NavItem icon={<Compass className="w-4 h-4" />} label="Explore Sheets" />
-                        <NavItem icon={<FileText className="w-4 h-4" />} label="My Sheets" />
-                        <NavItem icon={<Edit className="w-4 h-4" />} label="Notes" />
+                    <NavGroup title="CLASS TRACKER">
+                        <NavItem icon={<Building className="w-4 h-4" />} label="Class Assignments" />
+                        <NavItem icon={<FolderGit2 className="w-4 h-4" />} label="My Submissions" />
+                        <NavItem icon={<Compass className="w-4 h-4" />} label="Class Resources" />
+                        <NavItem icon={<FileText className="w-4 h-4" />} label="My Notes" />
                     </NavGroup>
 
-                    <NavGroup title="EVENT TRACKER">
-                        <NavItem icon={<Calendar className="w-4 h-4" />} label="Contests" />
+                    <NavGroup title="EXAMS & TESTS">
+                        <NavItem icon={<Calendar className="w-4 h-4" />} label="Class Tests" />
                     </NavGroup>
 
-                    <NavGroup title="COMMUNITY">
-                        <NavItem icon={<Trophy className="w-4 h-4" />} label="Leaderboard" />
+                    <NavGroup title="YOUR CLASS">
+                        <NavItem icon={<Trophy className="w-4 h-4" />} label="Class Leaderboard" />
                     </NavGroup>
 
                     <NavGroup title="SUPPORT">
@@ -140,7 +131,7 @@ export default function Dashboard() {
                     </div>
                     <div className="flex items-center space-x-4">
                         <button className="hidden md:flex items-center space-x-2 px-3 py-1.5 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 rounded-full text-xs font-semibold">
-                            <span>Company Wise Kit</span>
+                            <span>Class Rank: #1</span>
                             <span className="text-yellow-400">🌟</span>
                         </button>
                         <button className="w-9 h-9 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-500 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition">
@@ -193,7 +184,6 @@ export default function Dashboard() {
                                     <div className="space-y-3">
                                         <PlatformLink name="LeetCode" active />
                                         <PlatformLink name="GeeksForGeeks" active />
-                                        <PlatformLink name="CodeChef" active />
                                         <PlatformLink name="HackerRank" active />
                                     </div>
                                 </div>
@@ -227,12 +217,12 @@ export default function Dashboard() {
                             {/* CONTESTS */}
                             <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-6 shadow-sm col-span-1 md:col-span-2 xl:col-span-1 flex items-center justify-between">
                                 <div>
-                                    <h3 className="text-sm font-medium text-zinc-500">Total Contests</h3>
-                                    <p className="text-4xl font-extrabold mt-1">10</p>
+                                    <h3 className="text-sm font-medium text-zinc-500">Class Tests</h3>
+                                    <p className="text-4xl font-extrabold mt-1">4</p>
                                 </div>
                                 <div className="flex items-center space-x-2 bg-zinc-50 dark:bg-zinc-800/50 px-3 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700">
-                                    <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300">CodeChef</span>
-                                    <span className="text-sm font-bold ml-2">10</span>
+                                    <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300">Avg Score</span>
+                                    <span className="text-sm font-bold ml-2">94%</span>
                                 </div>
                             </div>
 
@@ -242,8 +232,7 @@ export default function Dashboard() {
                                 <h3 className="text-lg font-bold w-full text-center border-b border-zinc-100 dark:border-zinc-800 pb-4 mb-4">Problems Solved</h3>
 
                                 <DonutSection title="Fundamentals" data={fundamentalsDonutData} total="61" stats={{ GFG: 17, HackerRank: 44 }} />
-                                <DonutSection title="DSA" data={dsaDonutData} total="472" stats={{ Easy: 205, Medium: 242, Hard: 25 }} colors={['text-emerald-500', 'text-yellow-500', 'text-red-500']} />
-                                <DonutSection title="Competitive Programming" data={cpDonutData} total="115" stats={{ CodeChef: 115 }} />
+                                <DonutSection title="DSA Assignments" data={dsaDonutData} total="472" stats={{ Easy: 205, Medium: 242, Hard: 25 }} colors={['text-emerald-500', 'text-yellow-500', 'text-red-500']} />
 
                             </div>
 
@@ -289,14 +278,7 @@ export default function Dashboard() {
                             <a href="#" className="hover:text-zinc-800 dark:hover:text-white">Terms</a>
                         </div>
                         <p>&copy; 2026 CodeMentor Dashboard UI. All rights reserved.</p>
-                        <div className="mt-4 p-4 max-w-2xl bg-orange-50 dark:bg-orange-950/30 text-orange-800 dark:text-orange-200 rounded-xl text-left border border-orange-200 dark:border-orange-900/50">
-                            <p className="font-semibold mb-2 flex items-center"><TerminalSquare className="w-4 h-4 mr-2" /> Note on Architecture & Data Fetching</p>
-                            <p className="text-xs leading-relaxed opacity-90">
-                                This stunning UI currently uses <strong>mock data</strong> to demonstrate the layout. The Chrome Extension's local storage (`chrome.storage.local`) currently only tracks simple live attributes (like you have currently captured <strong>{localProblemsSolved}</strong> problem signals).
-                                <br /><br />
-                                To populate this entire dashboard dynamically exactly like <em>Codolio</em> across devices, your backend must implement a service that routinely scrapes your linked LeetCode and GeeksForGeeks IDs and stores those full global rating histories into the PostgreSQL DB. Then, this React component would fetch it directly from your Spring Boot REST APIs (e.g., <code className="bg-orange-200/50 dark:bg-orange-900/50 px-1 py-0.5 rounded">await fetch('/api/v1/profile/stats')</code>).
-                            </p>
-                        </div>
+
                     </footer>
                 </div>
             </main>
