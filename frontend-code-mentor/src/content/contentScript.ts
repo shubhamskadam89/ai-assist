@@ -30,7 +30,7 @@ class CodeCaptureService {
   private enabled = true;
   private sessionId: string | null = null;
   private overlayContainer: HTMLElement | null = null;
-
+  private hasLoggedCompletion = false;
 
   constructor() {
     this.init();
@@ -69,6 +69,9 @@ class CodeCaptureService {
 
     // Initial problem detection
     this.extractAndSendProblem();
+
+    // Start tracking submissions for success
+    this.observeSubmissions();
 
     // Listen for toggle and trigger messages
     chrome.runtime.onMessage.addListener((msg) => {
@@ -580,6 +583,59 @@ class CodeCaptureService {
     return 'unknown';
   }
 
+  // Monitor DOM for Successful Submissions
+  private observeSubmissions() {
+    const observer = new MutationObserver((mutations) => {
+      if (this.hasLoggedCompletion) return;
+
+      for (const mutation of mutations) {
+        if (mutation.type === 'childList' || mutation.type === 'characterData') {
+          // General scan for "Accepted" or "Problem Solved Successfully"
+          const pageText = document.body.innerText.toLowerCase();
+
+          if (pageText.includes('accepted') && window.location.hostname.includes('leetcode.com')) {
+            const successElement = document.querySelector('[data-e2e-locator="submission-result"]') || document.querySelector('.text-green-s');
+
+            if (successElement && successElement.textContent?.toLowerCase().includes('accepted')) {
+              this.handleSuccessfulSubmission();
+            }
+          } else if (pageText.includes('problem solved successfully') && window.location.hostname.includes('geeksforgeeks.org')) {
+            this.handleSuccessfulSubmission();
+          }
+        }
+      }
+    });
+
+    observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+  }
+
+  private handleSuccessfulSubmission() {
+    if (this.hasLoggedCompletion) return;
+    this.hasLoggedCompletion = true;
+    console.log("🏆 Problem Accepted! Sending to Backend Tracking.");
+
+    const problemDetails = this.extractProblemDetails();
+
+    // Create DTO payload
+    const attemptData = {
+      handle: "test_user", // TODO: Replace with dynamic user login handle 
+      platform: window.location.hostname.includes('leetcode.com') ? 'LEETCODE' : 'GEEKSFORGEEKS',
+      problemId: problemDetails.title || "Unknown Problem", // Use title as ID for now
+      difficulty: problemDetails.difficulty || "Medium", // Fallback to Medium if unknown
+      hintsUsed: 0, // Hardcoded for now until hints state is robustly managed cross-session
+      completed: true
+    };
+
+    chrome.runtime.sendMessage({
+      type: 'LOG_PROBLEM_ATTEMPT',
+      data: attemptData
+    });
+
+    // Reset lock after 60 seconds so if they do another problem without reloading page it tracks
+    setTimeout(() => {
+      this.hasLoggedCompletion = false;
+    }, 60000);
+  }
 
 }
 

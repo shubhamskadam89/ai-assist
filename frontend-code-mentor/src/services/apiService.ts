@@ -218,6 +218,23 @@ class ApiService {
     }
   }
 
+  // Dashboard API Logging
+  async logProblemAttempt(attemptData: any): Promise<void> {
+    try {
+      console.log("Logging Problem Attempt to Backend:", attemptData);
+
+      await this.makeRequest('/tracking/attempt', {
+        method: 'POST',
+        body: JSON.stringify(attemptData)
+      });
+
+      console.log("Problem Attempt successfully logged!");
+    } catch (error) {
+      console.error("Failed to log problem attempt:", error);
+      throw error;
+    }
+  }
+
   // User Management API
   async authenticateUser(email: string, _password: string): Promise<{ token: string; user: any }> {
     try {

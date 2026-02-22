@@ -44,6 +44,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       handleCodeUpdate(message.data, sender.tab?.id);
       break;
 
+    case 'LOG_PROBLEM_ATTEMPT':
+      apiService.logProblemAttempt(message.data).catch(console.error);
+      break;
+
     case 'GET_SETTINGS':
       chrome.storage.local.get(['settings'], (result) => {
         sendResponse(result.settings || {});
