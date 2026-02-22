@@ -23,16 +23,18 @@ const ratingData = [
     { name: 'Sep', uv: 1341 },
 ]
 
-const dsaDonutData = [
-    { name: 'Easy', value: 205, color: '#10b981' }, // emerald-500
-    { name: 'Medium', value: 242, color: '#eab308' }, // yellow-500
-    { name: 'Hard', value: 25, color: '#ef4444' } // red-500
-]
-
-const fundamentalsDonutData = [
-    { name: 'GFG', value: 17, color: '#10b981' },
-    { name: 'HackerRank', value: 44, color: '#eab308' }
-]
+// Interface matching Backend DTO
+interface DashboardData {
+    studentName: string;
+    handle: string;
+    totalActiveDays: number;
+    maxStreak: number;
+    currentStreak: number;
+    classTestsTaken: number;
+    avgTestScore: number;
+    dsaStats: { name: string, value: number, color: string }[];
+    fundamentalsStats: { name: string, value: number, color: string }[];
+}
 
 
 // Function to simulate a Github styled contribution heatmap grid
@@ -56,15 +58,70 @@ const getHeatmapColor = (level: number) => {
 
 export default function Dashboard() {
     const [sidebarOpen, setSidebarOpen] = useState(true)
+    const [dashboardData, setDashboardData] = useState<DashboardData | null>(null)
+    const [loading, setLoading] = useState(true)
+    const [error, setError] = useState<string | null>(null)
     const heatmapData = generateHeatmap();
 
     useEffect(() => {
-        chrome.storage?.local?.get(['userProgress', 'settings'], (result) => {
+        // First check local storage for theme
+        chrome.storage?.local?.get(['settings'], (result) => {
             if (result.settings?.theme === 'dark') {
                 document.documentElement.classList.add('dark')
             }
         })
+
+        // Fetch user data from backend
+        // We will hardcode test_user for now until a login flow is created
+        const fetchDashboardData = async () => {
+            try {
+                setLoading(true);
+                const response = await fetch('http://localhost:8080/api/v1/dashboard/stats/test_user');
+                if (!response.ok) {
+                    throw new Error('Failed to fetch data');
+                }
+                const data = await response.json();
+                setDashboardData(data);
+                setError(null);
+            } catch (err) {
+                console.error("Error fetching dashboard data:", err);
+                setError("Failed to load dashboard data. Is the backend running?");
+                // Setup mock fallback data so the UI doesn't look completely broken if server is off
+                setDashboardData({
+                    studentName: "Shubham Kadam",
+                    handle: "test_user",
+                    totalActiveDays: 234,
+                    maxStreak: 45,
+                    currentStreak: 12,
+                    classTestsTaken: 4,
+                    avgTestScore: 94.0,
+                    dsaStats: [
+                        { name: 'Easy', value: 205, color: '#10b981' },
+                        { name: 'Medium', value: 242, color: '#f97316' },
+                        { name: 'Hard', value: 44, color: '#eab308' }
+                    ],
+                    fundamentalsStats: [
+                        { name: 'Completed', value: 61, color: '#10b981' }
+                    ]
+                });
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchDashboardData();
     }, [])
+
+    if (loading) {
+        return (
+            <div className="flex h-screen items-center justify-center bg-[#f8fafc] dark:bg-zinc-950 text-zinc-800 dark:text-zinc-200 font-sans">
+                <div className="flex flex-col items-center space-y-4">
+                    <Activity className="w-8 h-8 animate-spin text-orange-500" />
+                    <p className="font-semibold text-sm">Loading Dashboard...</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="flex min-h-screen bg-[#f8fafc] dark:bg-zinc-950 text-zinc-800 dark:text-zinc-200 font-sans selection:bg-blue-100 dark:selection:bg-blue-900/30">
@@ -148,141 +205,139 @@ export default function Dashboard() {
                     <div className="max-w-[1400px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6">
 
                         {/* LEFT PROFILE CARD (COL-SPAN-3) */}
-                        <div className="lg:col-span-3 space-y-6">
-                            <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-6 flex flex-col items-center relative overflow-hidden shadow-sm">
-                                <div className="absolute top-4 right-4 flex space-x-2">
-                                    <span className="flex items-center space-x-1 text-xs text-zinc-500"><CheckCircle2 className="w-3 h-3 text-orange-500" /> Private</span>
-                                </div>
-                                <div className="w-28 h-28 rounded-full bg-zinc-100 dark:bg-zinc-800 border-4 border-white dark:border-zinc-900 shadow-md mb-4 mt-6 flex items-center justify-center overflow-hidden">
-                                    <User className="w-12 h-12 text-zinc-300 dark:text-zinc-600" />
-                                </div>
-                                <h2 className="text-xl font-bold">Shubham Kadam</h2>
-                                <p className="text-sm text-blue-500 font-medium flex items-center">
-                                    @shubhamskadam89 <CheckCircle2 className="w-3.5 h-3.5 ml-1 text-emerald-500" />
-                                </p>
+                        {/* PROFILE CARD */}
+                        <div className="lg:col-span-3 bg-white dark:bg-zinc-900 rounded-3xl p-8 border border-zinc-200 dark:border-zinc-800 shadow-sm flex flex-col items-center text-center relative overflow-hidden">
+                            <div className="absolute top-0 left-0 w-full h-24 bg-gradient-to-br from-orange-400 to-rose-400 opacity-20 dark:opacity-10"></div>
 
-                                <button className="w-full mt-6 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-bold shadow-sm shadow-orange-500/20 transition-all active:scale-95">
-                                    Get your Profile Card
-                                </button>
-
-                                <div className="flex items-center space-x-3 mt-6 pb-6 border-b border-zinc-100 dark:border-zinc-800/80 w-full justify-center">
-                                    <SocialIcon icon="✉" />
-                                    <SocialIcon icon="in" />
-                                    <SocialIcon icon="𝕏" />
-                                    <SocialIcon icon="🌐" />
-                                    <SocialIcon icon="📄" />
-                                </div>
-
-                                <div className="w-full mt-6 space-y-4 text-sm font-medium text-zinc-600 dark:text-zinc-400">
-                                    <div className="flex items-center"><Compass className="w-4 h-4 mr-3 text-zinc-400" /> India</div>
-                                    <div className="flex items-center"><Building className="w-4 h-4 mr-3 text-zinc-400" /> MIT Academy of Engineering</div>
-                                </div>
-
-                                {/* Connected Platforms Dropdown (Mock) */}
-                                <div className="w-full mt-8">
-                                    <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-4">Problem Solving Stats</h3>
-                                    <div className="space-y-3">
-                                        <PlatformLink name="LeetCode" active />
-                                        <PlatformLink name="GeeksForGeeks" active />
-                                        <PlatformLink name="HackerRank" active />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* RIGHT DASHBOARD DATA (COL-SPAN-9) */}
-                        <div className="lg:col-span-9 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-
-                            {/* STAT CARDS */}
-                            <StatCard title="Total Questions" value="648" />
-                            <StatCard title="Total Active Days" value="234" />
-
-                            {/* HEATMAP */}
-                            <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-5 shadow-sm col-span-1 xl:col-span-1">
-                                <div className="flex justify-between items-center mb-4">
-                                    <div className="flex space-x-4 text-xs font-medium text-zinc-500">
-                                        <span><strong className="text-zinc-800 dark:text-zinc-200">197</strong> Submissions</span>
-                                        <span>Max Streak <strong className="text-zinc-800 dark:text-zinc-200">72</strong></span>
-                                        <span>Curr Streak <strong className="text-zinc-800 dark:text-zinc-200">9</strong></span>
-                                    </div>
-                                </div>
-                                {/* CSS Grid for faux heatmap */}
-                                <div className="grid grid-cols-[repeat(10,1fr)] gap-1 w-full max-w-[200px] mt-2">
-                                    {heatmapData.map(cell => (
-                                        <div key={cell.id} className={`w-3 h-3 rounded-sm ${getHeatmapColor(cell.level)}`}></div>
-                                    ))}
-                                </div>
+                            <div className="relative">
+                                <img
+                                    src="https://avatars.githubusercontent.com/u/74038190?v=4" // Use real user's avatar from github or replace with placeholder
+                                    alt="Profile"
+                                    className="w-24 h-24 rounded-full border-4 border-white dark:border-zinc-900 shadow-lg object-cover"
+                                />
+                                <div className="absolute bottom-1 right-1 w-5 h-5 bg-emerald-500 border-2 border-white dark:border-zinc-900 rounded-full"></div>
                             </div>
 
-                            {/* CONTESTS */}
-                            <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-6 shadow-sm col-span-1 md:col-span-2 xl:col-span-1 flex items-center justify-between">
-                                <div>
-                                    <h3 className="text-sm font-medium text-zinc-500">Class Tests</h3>
-                                    <p className="text-4xl font-extrabold mt-1">4</p>
-                                </div>
-                                <div className="flex items-center space-x-2 bg-zinc-50 dark:bg-zinc-800/50 px-3 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700">
-                                    <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300">Avg Score</span>
-                                    <span className="text-sm font-bold ml-2">94%</span>
-                                </div>
+                            <h2 className="mt-4 text-2xl font-bold">{dashboardData?.studentName || "Student"}</h2>
+                            <p className="text-zinc-500 font-medium tracking-tight mt-0.5">@{dashboardData?.handle || "student_id"}</p>
+
+                            <button className="w-full mt-6 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-bold shadow-sm shadow-orange-500/20 transition-all active:scale-95">
+                                Get your Profile Card
+                            </button>
+
+                            <div className="flex items-center space-x-3 mt-6 pb-6 border-b border-zinc-100 dark:border-zinc-800/80 w-full justify-center">
+                                <SocialIcon icon="✉" />
+                                <SocialIcon icon="in" />
+                                <SocialIcon icon="𝕏" />
+                                <SocialIcon icon="🌐" />
+                                <SocialIcon icon="📄" />
                             </div>
 
-
-                            {/* DONUT CHARTS COLUMN (Spans Right) */}
-                            <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-6 shadow-sm col-span-1 xl:row-span-3 flex flex-col items-center">
-                                <h3 className="text-lg font-bold w-full text-center border-b border-zinc-100 dark:border-zinc-800 pb-4 mb-4">Problems Solved</h3>
-
-                                <DonutSection title="Fundamentals" data={fundamentalsDonutData} total="61" stats={{ GFG: 17, HackerRank: 44 }} />
-                                <DonutSection title="DSA Assignments" data={dsaDonutData} total="472" stats={{ Easy: 205, Medium: 242, Hard: 25 }} colors={['text-emerald-500', 'text-yellow-500', 'text-red-500']} />
-
+                            <div className="w-full mt-6 space-y-4 text-sm font-medium text-zinc-600 dark:text-zinc-400">
+                                <div className="flex items-center"><Compass className="w-4 h-4 mr-3 text-zinc-400" /> India</div>
+                                <div className="flex items-center"><Building className="w-4 h-4 mr-3 text-zinc-400" /> MIT Academy of Engineering</div>
                             </div>
 
-
-                            {/* RATING CHART */}
-                            <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-6 shadow-sm col-span-1 md:col-span-2 xl:col-span-2">
-                                <div className="flex justify-between items-start mb-6">
-                                    <div>
-                                        <h3 className="text-sm font-medium text-zinc-500">Rating</h3>
-                                        <div className="text-3xl font-extrabold flex items-center space-x-2">
-                                            <span>1341</span>
-                                        </div>
-                                    </div>
-                                    <div className="text-right">
-                                        <p className="text-sm text-zinc-500">30 Apr 2025</p>
-                                        <p className="font-bold">Starters 184 (Rated)</p>
-                                        <p className="text-xs text-zinc-500">Rank: 2864</p>
-                                    </div>
-                                </div>
-                                <div className="h-64 w-full">
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <LineChart data={ratingData}>
-                                            <XAxis dataKey="name" stroke="#a1a1aa" fontSize={12} tickLine={false} axisLine={false} />
-                                            <YAxis stroke="#a1a1aa" fontSize={12} tickLine={false} axisLine={false} domain={['dataMin - 100', 'auto']} />
-                                            <Tooltip
-                                                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 15px rgba(0,0,0,0.1)', background: '#18181b', color: '#fff' }}
-                                            />
-                                            <Line type="monotone" dataKey="uv" stroke="#f97316" strokeWidth={3} dot={{ fill: '#f97316', strokeWidth: 2, r: 4 }} activeDot={{ r: 6 }} />
-                                        </LineChart>
-                                    </ResponsiveContainer>
+                            {/* Connected Platforms Dropdown (Mock) */}
+                            <div className="w-full mt-8">
+                                <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-4">Problem Solving Stats</h3>
+                                <div className="space-y-3">
+                                    <PlatformLink name="LeetCode" active />
+                                    <PlatformLink name="GeeksForGeeks" active />
+                                    <PlatformLink name="HackerRank" active />
                                 </div>
                             </div>
-
-
                         </div>
                     </div>
 
-                    <footer className="w-full mt-12 pt-8 border-t border-zinc-200 dark:border-zinc-800 text-center text-sm text-zinc-500 flex flex-col items-center">
-                        <div className="flex space-x-6 mb-4">
-                            <a href="#" className="hover:text-zinc-800 dark:hover:text-white">FAQ</a>
-                            <a href="#" className="hover:text-zinc-800 dark:hover:text-white">Contact Us</a>
-                            <a href="#" className="hover:text-zinc-800 dark:hover:text-white">Privacy</a>
-                            <a href="#" className="hover:text-zinc-800 dark:hover:text-white">Terms</a>
-                        </div>
-                        <p>&copy; 2026 CodeMentor Dashboard UI. All rights reserved.</p>
+                    {/* RIGHT DASHBOARD DATA (COL-SPAN-9) */}
+                    <div className="lg:col-span-9 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
 
-                    </footer>
+                        {/* STAT CARDS */}
+                        <StatCard title="Total Active Days" value={dashboardData?.totalActiveDays?.toString() || "0"} />
+                        <StatCard title="Current Streak" value={`${dashboardData?.currentStreak?.toString() || "0"} 🔥`} />
+
+                        {/* HEATMAP */}
+                        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-5 shadow-sm col-span-1 xl:col-span-1">
+                            <div className="flex justify-between items-center mb-4">
+                                <div className="flex space-x-4 text-xs font-medium text-zinc-500">
+                                    <span><strong className="text-zinc-800 dark:text-zinc-200">197</strong> Submissions</span>
+                                    <span>Max Streak <strong className="text-zinc-800 dark:text-zinc-200">72</strong></span>
+                                    <span>Curr Streak <strong className="text-zinc-800 dark:text-zinc-200">9</strong></span>
+                                </div>
+                            </div>
+                            {/* CSS Grid for faux heatmap */}
+                            <div className="grid grid-cols-[repeat(10,1fr)] gap-1 w-full max-w-[200px] mt-2">
+                                {heatmapData.map(cell => (
+                                    <div key={cell.id} className={`w-3 h-3 rounded-sm ${getHeatmapColor(cell.level)}`}></div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* CONTESTS */}
+                        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-6 shadow-sm col-span-1 md:col-span-2 xl:col-span-1 flex items-center justify-between">
+                            <div>
+                                <h3 className="text-sm font-medium text-zinc-500">Class Tests</h3>
+                                <p className="text-4xl font-extrabold mt-1">{dashboardData?.classTestsTaken || 0}</p>
+                            </div>
+                            <div className="flex items-center space-x-2 bg-zinc-50 dark:bg-zinc-800/50 px-3 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700">
+                                <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300">Avg Score</span>
+                                <span className="text-sm font-bold ml-2">{dashboardData?.avgTestScore || 0}%</span>
+                            </div>
+                        </div>
+
+
+                        {/* DONUT CHARTS COLUMN (Spans Right) */}
+                        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-6 shadow-sm col-span-1 xl:row-span-3 flex flex-col items-center">
+                            <h3 className="text-lg font-bold w-full text-center border-b border-zinc-100 dark:border-zinc-800 pb-4 mb-4">Problems Solved</h3>
+
+                            {error && (
+                                <div className="w-full text-xs text-red-500 text-center mb-4 font-semibold">{error}</div>
+                            )}
+
+                            <DonutSection title="Fundamentals" data={dashboardData?.fundamentalsStats || []} total={dashboardData?.fundamentalsStats?.reduce((sum, item) => sum + item.value, 0) || 0} stats={{ Completed: dashboardData?.fundamentalsStats?.[0]?.value || 0 }} />
+                            <DonutSection title="DSA Assignments" data={dashboardData?.dsaStats || []} total={dashboardData?.dsaStats?.reduce((sum, item) => sum + item.value, 0) || 0} stats={{ Easy: dashboardData?.dsaStats?.find(s => s.name === 'Easy')?.value || 0, Medium: dashboardData?.dsaStats?.find(s => s.name === 'Medium')?.value || 0, Hard: dashboardData?.dsaStats?.find(s => s.name === 'Hard')?.value || 0 }} colors={['text-emerald-500', 'text-yellow-500', 'text-red-500']} />
+
+                        </div>
+
+                        {/* RATING CHART */}
+                        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-6 shadow-sm col-span-1 md:col-span-2 xl:col-span-2">
+                            <div className="flex items-center justify-between mb-6">
+                                <h3 className="font-bold text-lg">Rating History</h3>
+                                <select className="bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 text-xs px-2 py-1 rounded-md outline-none">
+                                    <option>Last 6 Months</option>
+                                </select>
+                            </div>
+                            <div className="h-48 w-full">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <LineChart data={ratingData}>
+                                        <XAxis dataKey="name" stroke="#a1a1aa" fontSize={12} tickLine={false} axisLine={false} />
+                                        <YAxis stroke="#a1a1aa" fontSize={12} tickLine={false} axisLine={false} domain={['dataMin - 100', 'auto']} />
+                                        <Tooltip
+                                            cursor={{ stroke: 'rgba(249, 115, 22, 0.2)', strokeWidth: 2 }} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                        />
+                                        <Line type="monotone" dataKey="uv" stroke="#f97316" strokeWidth={3} dot={{ fill: '#f97316', strokeWidth: 2 }} activeDot={{ r: 6, fill: '#f97316', stroke: '#fff', strokeWidth: 2 }} className="drop-shadow-sm" />
+                                    </LineChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+
+
+                    </div>
                 </div>
-            </main>
-        </div>
+
+                <footer className="w-full mt-12 pt-8 border-t border-zinc-200 dark:border-zinc-800 text-center text-sm text-zinc-500 flex flex-col items-center">
+                    <div className="flex space-x-6 mb-4">
+                        <a href="#" className="hover:text-zinc-800 dark:hover:text-white">FAQ</a>
+                        <a href="#" className="hover:text-zinc-800 dark:hover:text-white">Contact Us</a>
+                        <a href="#" className="hover:text-zinc-800 dark:hover:text-white">Privacy</a>
+                        <a href="#" className="hover:text-zinc-800 dark:hover:text-white">Terms</a>
+                    </div>
+                    <p>&copy; 2026 CodeMentor Dashboard UI. All rights reserved.</p>
+
+                </footer>
+            </main >
+        </div >
     )
 }
 
