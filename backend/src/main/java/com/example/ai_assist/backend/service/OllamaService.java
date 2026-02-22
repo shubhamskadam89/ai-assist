@@ -5,42 +5,62 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.http.*;
 
 import java.util.Map;
+import org.springframework.beans.factory.annotation.Value;
 
 @Service
 public class OllamaService {
 
-    private final RestTemplate restTemplate = new RestTemplate();
+        @Value("${ai.ollama.url:http://localhost:11434/api/generate}")
+        private String url;
 
-    public String generateHint(String problem, String code) {
+        @Value("${ai.ollama.model:qwen3-coder:480b-cloud}")
+        private String model;
 
-        String url = "http://localhost:11434/api/generate";
+        private final RestTemplate restTemplate = new RestTemplate();
 
-        String prompt = """
-                You are a coding interview assistant.
-                Give ONLY a short hint (1-2 sentences).
-                Do NOT give solution.
+        public String generateHint(String problem, String code) {
 
-                Problem:
-                """ + problem + """
+                String prompt = """
+                                You are a friendly, encouraging coding mentor speaking in conversational Hinglish (Hindi + English).
 
-                Code:
-                """ + code;
+                                Your job is to GUIDE the student, NOT solve the problem for them. Observe their code.
 
-        Map<String, Object> requestBody = Map.of(
-                "model", "phi3",
-                "prompt", prompt,
-                "stream", false
-        );
+                                RULES (STRICTLY FOLLOW THESE FORMATS):
+                                1. If their approach is correct:
+                                   - Your response MUST start exactly with "CORRECT: "
+                                   - Followed by a short encouraging message like "Badiya jaa rahe ho, keep going!" or "Sahi direction mein ho, complete it!".
+                                2. If they are making a mistake, stuck, or using an inefficient approach:
+                                   - Your response MUST start exactly with "HINT: "
+                                   - Followed by exactly ONE short guiding hint.
+                                   - MAXIMUM length: 2 to 3 short lines.
+                                   - NO direct code solutions. NO writing the algorithm for them.
+                                   - Just point out the flaw gently and ask them to think about a specific alternative, in a friendly Hinglish tone.
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
+                                Do not include any other text except the CORRECT: or HINT: prefix and your message.
 
-        HttpEntity<Map<String, Object>> entity =
-                new HttpEntity<>(requestBody, headers);
+                                Problem:
+                                """
+                                + problem + """
 
-        ResponseEntity<Map> response =
-                restTemplate.postForEntity(url, entity, Map.class);
+                                                Code:
+                                                """ + code;
 
-        return (String) response.getBody().get("response");
-    }
+                Map<String, Object> requestBody = Map.of(
+                                "model", model,
+                                "prompt", prompt,
+                                "stream", false);
+
+                HttpHeaders headers = new HttpHeaders();
+                headers.setContentType(MediaType.APPLICATION_JSON);
+
+                HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
+
+                try {
+                        ResponseEntity<Map> response = restTemplate.postForEntity(url, entity, Map.class);
+                        return (String) response.getBody().get("response");
+                } catch (Exception e) {
+                        e.printStackTrace();
+                        return "Error communicating with AI: " + e.getMessage();
+                }
+        }
 }

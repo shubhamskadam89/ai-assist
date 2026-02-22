@@ -18,8 +18,7 @@ public class CodeAnalysisService {
     public CodeAnalysisService(
             ProblemContextRepository contextRepository,
             CodeSnapshotRepository snapshotRepository,
-            OllamaService ollamaService
-    ) {
+            OllamaService ollamaService) {
         this.contextRepository = contextRepository;
         this.snapshotRepository = snapshotRepository;
         this.ollamaService = ollamaService;
@@ -47,8 +46,7 @@ public class CodeAnalysisService {
                 request.getSessionId(),
                 context,
                 request.getLanguage(),
-                request.getRawCode()
-        ));
+                request.getRawCode()));
 
         System.out.println("[Problem] " + context.getDescription());
         System.out.println("[Code] " + request.getRawCode());
@@ -56,12 +54,29 @@ public class CodeAnalysisService {
         try {
             String hint = ollamaService.generateHint(
                     context.getDescription(),
-                    request.getRawCode()
-            );
+                    request.getRawCode());
 
             System.out.println("[OLLAMA] RESPONSE: " + hint);
 
-            return new CodeAnalysisResponse(true, "hint", hint);
+            boolean showHint = true;
+            String message = hint;
+            String level = "logic";
+
+            if (hint != null) {
+                if (hint.trim().startsWith("CORRECT:")) {
+                    showHint = false;
+                    message = hint.substring(hint.indexOf("CORRECT:") + 8).trim();
+                    level = "GREAT_JOB";
+                } else if (hint.trim().startsWith("HINT:")) {
+                    showHint = true;
+                    message = hint.substring(hint.indexOf("HINT:") + 5).trim();
+                } else if (hint.toLowerCase().contains("badiya") || hint.toLowerCase().contains("sahi")) {
+                    showHint = false;
+                    level = "GREAT_JOB";
+                }
+            }
+
+            return new CodeAnalysisResponse(showHint, level, message);
 
         } catch (Exception e) {
             e.printStackTrace();
