@@ -6,6 +6,9 @@ import { StatCard } from './components/StatCard'
 import { HeatmapSection } from './components/HeatmapSection'
 import { DonutSection } from './components/DonutChartCard'
 import { RatingChart } from './components/RatingChart'
+import { AuthScreens } from './components/AuthScreens'
+import { AssignmentsView } from './components/AssignmentsView'
+import { LeaderboardView } from './components/LeaderboardView'
 
 import { PlaceholderView } from './components/PlaceholderView'
 
@@ -26,15 +29,18 @@ interface DashboardData {
 export default function Dashboard() {
     const [sidebarOpen, setSidebarOpen] = useState(true)
     const [activeTab, setActiveTab] = useState('Portfolio')
+    const [userHandle, setUserHandle] = useState<string | null>(localStorage.getItem('codementor_handle'))
     const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        if (!userHandle) return; // Wait until authenticated
+
         const fetchDashboardData = async () => {
+            setLoading(true);
             try {
-                // TODO: Replace 'test_user' with actual auth session handle when auth is implemented
-                const handle = 'test_user';
-                const response = await fetch(`http://localhost:8080/api/v1/dashboard/stats/${handle}`);
+                // Now using the actual dynamic user handle
+                const response = await fetch(`http://localhost:8080/api/v1/dashboard/stats/${userHandle}`);
 
                 if (response.ok) {
                     const data: DashboardData = await response.json();
@@ -50,7 +56,12 @@ export default function Dashboard() {
         };
 
         fetchDashboardData();
-    }, []);
+    }, [userHandle]);
+
+    // Render Auth Screen Gatekeeper if no valid session handle
+    if (!userHandle) {
+        return <AuthScreens onLoginSuccess={(handle) => setUserHandle(handle)} />;
+    }
 
     if (loading) {
         return (
@@ -149,6 +160,10 @@ export default function Dashboard() {
                                     <RatingChart />
                                 </div>
                             </>
+                        ) : activeTab === 'Class Assignments' ? (
+                            <AssignmentsView />
+                        ) : activeTab === 'Class Leaderboard' ? (
+                            <LeaderboardView />
                         ) : (
                             <PlaceholderView title={activeTab} />
                         )}
