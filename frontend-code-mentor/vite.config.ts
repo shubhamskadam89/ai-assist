@@ -27,5 +27,9 @@ export default defineConfig({
     alias: {
       '@': resolve(__dirname, 'src')
     }
+  },
+  server: {
+    open: '/src/dashboard/index.html',
+    port: 5173
   }
 })

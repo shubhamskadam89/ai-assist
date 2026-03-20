@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Mail, Lock, User as UserIcon, ArrowRight, Github, Code2 } from 'lucide-react'
 
 interface AuthScreensProps {
-    onLoginSuccess: (handle: string) => void;
+    onLoginSuccess: (handle: string, role: string) => void;
 }
 
 export function AuthScreens({ onLoginSuccess }: AuthScreensProps) {
@@ -10,6 +10,7 @@ export function AuthScreens({ onLoginSuccess }: AuthScreensProps) {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [handle, setHandle] = useState('');
+    const [role, setRole] = useState<'student' | 'teacher'>('student');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
 
@@ -28,14 +29,16 @@ export function AuthScreens({ onLoginSuccess }: AuthScreensProps) {
                     // Extract handle from email for demo purposes, or default to test_user if empty
                     const derivedHandle = email.split('@')[0] || 'test_user';
                     localStorage.setItem('codementor_handle', derivedHandle);
-                    onLoginSuccess(derivedHandle);
+                    localStorage.setItem('user_role', role);
+                    onLoginSuccess(derivedHandle, role);
                 } else {
                     throw new Error("Please enter both email and password.");
                 }
             } else {
                 if (email && password && handle) {
                     localStorage.setItem('codementor_handle', handle);
-                    onLoginSuccess(handle);
+                    localStorage.setItem('user_role', role);
+                    onLoginSuccess(handle, role);
                 } else {
                     throw new Error("Please fill in all fields.");
                 }
@@ -93,6 +96,17 @@ export function AuthScreens({ onLoginSuccess }: AuthScreensProps) {
                 </div>
 
                 <div className="w-full max-w-md space-y-8">
+                    {/* Role selection */}
+                    <div className="flex justify-center mb-4">
+                        <label className="mr-4 flex items-center">
+                            <input type="radio" name="role" value="student" checked={role === 'student'} onChange={() => setRole('student')} className="mr-2" />
+                            Student
+                        </label>
+                        <label className="flex items-center">
+                            <input type="radio" name="role" value="teacher" checked={role === 'teacher'} onChange={() => setRole('teacher')} className="mr-2" />
+                            Teacher
+                        </label>
+                    </div>
                     <div>
                         <h2 className="text-3xl font-extrabold tracking-tight mb-2">
                             {isLogin ? 'Welcome back' : 'Create an account'}

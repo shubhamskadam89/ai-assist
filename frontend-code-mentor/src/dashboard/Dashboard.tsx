@@ -46,10 +46,29 @@ export default function Dashboard() {
                     const data: DashboardData = await response.json();
                     setDashboardData(data);
                 } else {
-                    console.error("Failed to fetch dashboard stats.");
+                    console.warn("Backend API returned non-OK. Using mock data.");
+                    throw new Error("Failed to fetch dashboard stats.");
                 }
             } catch (error) {
-                console.error("Error connecting to backend dashboard API:", error);
+                console.warn("Error connecting to backend dashboard API. Injecting mock data:", error);
+                setDashboardData({
+                    studentName: "Mock Student",
+                    handle: userHandle,
+                    totalActiveDays: 142,
+                    maxStreak: 14,
+                    currentStreak: 5,
+                    classTestsTaken: 12,
+                    avgTestScore: 88,
+                    dsaStats: [
+                        { name: "Arrays", value: 45, color: "text-emerald-500" },
+                        { name: "Trees", value: 20, color: "text-yellow-500" },
+                        { name: "Graphs", value: 10, color: "text-red-500" }
+                    ],
+                    fundamentalsStats: [
+                        { name: "Variables", value: 15, color: "text-emerald-500" },
+                        { name: "Loops", value: 25, color: "text-yellow-500" }
+                    ]
+                });
             } finally {
                 setLoading(false);
             }
@@ -60,7 +79,7 @@ export default function Dashboard() {
 
     // Render Auth Screen Gatekeeper if no valid session handle
     if (!userHandle) {
-        return <AuthScreens onLoginSuccess={(handle) => setUserHandle(handle)} />;
+        return <AuthScreens onLoginSuccess={(handle, _role) => setUserHandle(handle)} />;
     }
 
     if (loading) {

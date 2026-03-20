@@ -1,15 +1,14 @@
 import { Trophy, Medal, ChevronUp, ChevronDown, Minus, ArrowRight } from 'lucide-react'
 
 export function LeaderboardView() {
-    // Mock Data
     const students = [
-        { rank: 1, name: "Shubham Kadam", handle: "shubhamskadam89", score: 2450, problems: 342, trend: "up", avatar: "🦊" },
-        { rank: 2, name: "Alice Chen", handle: "alice_codes", score: 2310, problems: 315, trend: "same", avatar: "🐼" },
-        { rank: 3, name: "David Miller", handle: "dmiller99", score: 2150, problems: 289, trend: "down", avatar: "🦁" },
-        { rank: 4, name: "Sarah Jenkins", handle: "sarahj_dev", score: 1980, problems: 245, trend: "up", avatar: "🐨" },
-        { rank: 5, name: "Michael Chang", handle: "mchang_coder", score: 1850, problems: 210, trend: "up", avatar: "🐯" },
-        { rank: 6, name: "Elena Rodriguez", handle: "elena_r", score: 1720, problems: 188, trend: "same", avatar: "🐰" },
-        { rank: 7, name: "James Wilson", handle: "jwilson_01", score: 1650, problems: 175, trend: "down", avatar: "🐻" },
+        { rank: 1, name: "Shubham Kadam", prn: "001", rating: 4.9, score: 2450, problems: 342, trend: "up", avatar: "🦊" },
+        { rank: 2, name: "Alice Chen", prn: "002", rating: 4.7, score: 2310, problems: 315, trend: "same", avatar: "🐼" },
+        { rank: 3, name: "David Miller", prn: "003", rating: 4.5, score: 2150, problems: 289, trend: "down", avatar: "🦁" },
+        { rank: 4, name: "Sarah Jenkins", prn: "004", rating: 4.3, score: 1980, problems: 245, trend: "up", avatar: "🐨" },
+        { rank: 5, name: "Michael Chang", prn: "005", rating: 4.1, score: 1850, problems: 210, trend: "up", avatar: "🐯" },
+        { rank: 6, name: "Elena Rodriguez", prn: "006", rating: 4.0, score: 1720, problems: 188, trend: "same", avatar: "🐰" },
+        { rank: 7, name: "James Wilson", prn: "007", rating: 3.8, score: 1650, problems: 175, trend: "down", avatar: "🐻" },
     ];
 
     const getRankIcon = (rank: number) => {
@@ -50,9 +49,12 @@ export function LeaderboardView() {
                         <div className="absolute -top-3 -right-3">{getRankIcon(2)}</div>
                     </div>
                     <h3 className="font-bold text-lg">{students[1].name}</h3>
-                    <p className="text-sm text-zinc-500 mb-4">@{students[1].handle}</p>
+                    <p className="text-sm text-zinc-500 mb-4">PRN: {students[1].prn}</p>
                     <div className="px-4 py-1.5 bg-zinc-100 dark:bg-zinc-800 rounded-full text-zinc-700 dark:text-zinc-300 font-extrabold text-sm mb-2">
                         {students[1].score} pts
+                    </div>
+                    <div className="inline-flex items-center px-2.5 py-0.5 rounded-full font-bold text-orange-700 dark:text-orange-400 bg-orange-100 dark:bg-orange-500/20">
+                        ★ {students[1].rating}
                     </div>
                 </div>
 
@@ -64,9 +66,12 @@ export function LeaderboardView() {
                         <div className="absolute -top-4 -right-4 drop-shadow-md">{getRankIcon(1)}</div>
                     </div>
                     <h3 className="font-extrabold text-xl">{students[0].name}</h3>
-                    <p className="text-sm text-orange-600 dark:text-orange-400 font-medium mb-4">@{students[0].handle}</p>
+                    <p className="text-sm text-orange-600 dark:text-orange-400 font-medium mb-4">PRN: {students[0].prn}</p>
                     <div className="px-5 py-2 bg-orange-500 text-white rounded-full font-extrabold shadow-sm mb-2">
                         {students[0].score} pts
+                    </div>
+                    <div className="inline-flex items-center px-2.5 py-0.5 rounded-full font-bold text-orange-700 dark:text-orange-400 bg-orange-100 dark:bg-orange-500/20">
+                        ★ {students[0].rating}
                     </div>
                 </div>
 
@@ -77,9 +82,12 @@ export function LeaderboardView() {
                         <div className="absolute -top-3 -right-3">{getRankIcon(3)}</div>
                     </div>
                     <h3 className="font-bold text-lg">{students[2].name}</h3>
-                    <p className="text-sm text-zinc-500 mb-4">@{students[2].handle}</p>
+                    <p className="text-sm text-zinc-500 mb-4">PRN: {students[2].prn}</p>
                     <div className="px-4 py-1.5 bg-zinc-100 dark:bg-zinc-800 rounded-full text-zinc-700 dark:text-zinc-300 font-extrabold text-sm mb-2">
                         {students[2].score} pts
+                    </div>
+                    <div className="inline-flex items-center px-2.5 py-0.5 rounded-full font-bold text-orange-700 dark:text-orange-400 bg-orange-100 dark:bg-orange-500/20">
+                        ★ {students[2].rating}
                     </div>
                 </div>
             </div>
@@ -92,7 +100,7 @@ export function LeaderboardView() {
                             <tr className="bg-zinc-50 dark:bg-zinc-800/50 text-xs uppercase tracking-widest text-zinc-500 border-b border-zinc-200 dark:border-zinc-800">
                                 <th className="px-6 py-4 font-bold w-20 text-center">Rank</th>
                                 <th className="px-6 py-4 font-bold">Student</th>
-                                <th className="px-6 py-4 font-bold text-right">Problems Solved</th>
+                                <th className="px-6 py-4 font-bold text-right">Rating</th>
                                 <th className="px-6 py-4 font-bold text-right">Score</th>
                             </tr>
                         </thead>
@@ -112,12 +120,14 @@ export function LeaderboardView() {
                                             </div>
                                             <div>
                                                 <div className="font-bold text-zinc-900 dark:text-white">{student.name}</div>
-                                                <div className="text-xs text-zinc-500">@{student.handle}</div>
+                                                <div className="text-xs text-zinc-500">PRN: {student.prn}</div>
                                             </div>
                                         </div>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-right">
-                                        <span className="font-medium text-zinc-700 dark:text-zinc-300">{student.problems}</span>
+                                        <div className="inline-flex items-center px-2.5 py-0.5 rounded-full font-bold text-orange-700 dark:text-orange-400 bg-orange-100 dark:bg-orange-500/20">
+                                            ★ {student.rating}
+                                        </div>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-right">
                                         <div className="flex items-center justify-end space-x-3">
@@ -130,7 +140,7 @@ export function LeaderboardView() {
                         </tbody>
                     </table>
                 </div>
-            </div>
-        </div>
+            </div >
+        </div >
     )
 }

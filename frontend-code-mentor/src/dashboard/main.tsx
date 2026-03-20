@@ -1,10 +1,11 @@
-import React from 'react'
-import ReactDOM from 'react-dom/client'
-import Dashboard from './Dashboard'
-import '../popup/index.css' // Reuse the same global styles and Tailwind config
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import AppRouter from './AppRouter';
+import '../popup/index.css';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
     <React.StrictMode>
-        <Dashboard />
+        <AppRouter />
     </React.StrictMode>
-)
+);
+
