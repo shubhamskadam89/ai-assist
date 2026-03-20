@@ -10,4 +10,6 @@ public interface ProblemAttemptRepository extends JpaRepository<ProblemAttempt, 
     Page<ProblemAttempt> findByStudentProfileIdOrderByTimestampDesc(
             Long studentProfileId,
             Pageable pageable);
+
+    java.util.List<ProblemAttempt> findByStudentProfileId(Long studentProfileId);
 }

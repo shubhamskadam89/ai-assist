@@ -1,8 +1,8 @@
 package com.example.aiassist.ai.classification.engine;
 
 import com.example.aiassist.ai.classification.dto.ProblemClassificationResult;
-import java.util.concurrent.Future;
+import java.util.concurrent.CompletableFuture;
 
 public interface AiProblemClassifier {
-    Future<ProblemClassificationResult> classify(String title, String description);
+    CompletableFuture<ProblemClassificationResult> classify(String title, String description);
 }
