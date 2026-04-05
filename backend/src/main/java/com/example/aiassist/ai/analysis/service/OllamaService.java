@@ -16,10 +16,10 @@ public class OllamaService {
     @Value("${ai.ollama.url:http://localhost:11434/api/generate}")
     private String url;
 
-    @Value("${ai.ollama.model:qwen3-coder:480b-cloud}")
+    @Value("${ai.ollama.model:phi3}")
     private String model;
 
-    public String generateHint(String problem, String code) {
+    public String generateHint(String problem, String code, String studentLevel) {
 
         if (problem == null || problem.isBlank()) {
             throw new BadRequestException("Problem description cannot be empty");
@@ -29,7 +29,8 @@ public class OllamaService {
             throw new BadRequestException("Code cannot be empty");
         }
 
-        String prompt = buildPrompt(problem, code);
+        String level = (studentLevel != null && !studentLevel.isBlank()) ? studentLevel : "intermediate";
+        String prompt = buildPrompt(problem, code, level);
 
         Map<String, Object> requestBody = Map.of(
                 "model", model,
@@ -65,18 +66,37 @@ public class OllamaService {
         }
     }
 
-    private String buildPrompt(String problem, String code) {
-        return """
-                You are a friendly coding mentor.
+    private String buildPrompt(String problem, String code, String studentLevel) {
+        String levelInstructions;
+        switch (studentLevel.toLowerCase()) {
+            case "beginner" ->
+                levelInstructions = "Use very simple language, avoid jargon. Give a tiny nudge like 'Try thinking about what data structure helps with fast lookups.'";
+            case "expert" ->
+                levelInstructions = "Be concise and technical. You may reference algorithms, complexity or patterns directly (e.g. 'Consider amortized O(1) via two-stack approach').";
+            default ->
+                levelInstructions = "Be clear but not too simple. Reference general concepts like loops, recursion, or edge cases without revealing the answer.";
+        }
 
-                RULES:
-                If correct: start with "CORRECT: "
-                If mistake: start with "HINT: "
+        String base = """
+                You are a strict Socratic coding mentor. Your job is to guide the student, NOT solve the problem.
 
-                Problem:
-                """ + problem + """
+                ABSOLUTE RULES:
+                1. NEVER write code.
+                2. NEVER give the direct answer or solution logic.
+                3. Give ONLY ONE short hint sentence (max 2 lines).
+                4. Ask the student a guiding question or point out what to think about.
+                5. Start with "HINT: " always.
 
-                Code:
-                """ + code;
+                Level instructions: %s
+
+                Problem: %s
+
+                Student's current code:
+                %s
+
+                Provide a single guiding hint:
+                """;
+
+        return String.format(base, levelInstructions, problem, code);
     }
 }

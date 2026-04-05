@@ -43,7 +43,8 @@ public class CodeAnalysisService {
         try {
             hint = ollamaService.generateHint(
                     context.getDescription(),
-                    request.getRawCode()
+                    request.getRawCode(),
+                    request.getStudentLevel() // NEW PARAM
             );
         } catch (Exception e) {
             throw new BadRequestException("AI engine unavailable");

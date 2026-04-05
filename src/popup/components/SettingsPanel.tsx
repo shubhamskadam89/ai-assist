@@ -22,6 +22,7 @@ interface SettingsState {
   autoCapture: boolean
   notifications: boolean
   dataCollection: boolean
+  studentLevel?: 'beginner' | 'intermediate' | 'expert'
 }
 
 const SettingsPanel: React.FC = () => {
@@ -136,7 +137,22 @@ const SettingsPanel: React.FC = () => {
               >
                 <option value="light">Light</option>
                 <option value="dark">Dark</option>
-                <option value="system">System</option>
+              </select>
+            </SettingItem>
+
+            <SettingItem
+              icon={<Code className="w-4 h-4 text-gray-600 dark:text-gray-400" />}
+              title="Student Level"
+              description="Adjust complexity of AI hints"
+            >
+              <select
+                value={localSettings.studentLevel || 'intermediate'}
+                onChange={(e) => handleSettingChange('studentLevel', e.target.value)}
+                className="text-sm font-medium border border-zinc-300 dark:border-zinc-700 rounded-md px-2 py-1.5 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-300 outline-none transition-shadow"
+              >
+                <option value="beginner">Beginner</option>
+                <option value="intermediate">Intermediate</option>
+                <option value="expert">Expert</option>
               </select>
             </SettingItem>
 

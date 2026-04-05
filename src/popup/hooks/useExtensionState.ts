@@ -25,6 +25,7 @@ interface Settings {
   autoCapture: boolean
   notifications: boolean
   dataCollection: boolean
+  studentLevel: 'beginner' | 'intermediate' | 'expert'
 }
 
 export const useExtensionState = () => {
@@ -39,7 +40,8 @@ export const useExtensionState = () => {
     showProgress: true,
     autoCapture: true,
     notifications: true,
-    dataCollection: false
+    dataCollection: false,
+    studentLevel: 'intermediate'
   })
 
   // 🔹 Load initial state

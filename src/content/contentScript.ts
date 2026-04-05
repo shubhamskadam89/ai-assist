@@ -28,11 +28,8 @@ class CodeCaptureService {
   private currentEditor: CodeEditor | null = null;
   private overlayContainer: HTMLElement | null = null;
   private isOverlayVisible = false;
-  private lastCapturedCode = '';
   private enabled = true;
   private sessionId: string | null = null;
-  private lastHintTimestamp: number = Date.now();
-  private lastHintCode: string = '';
   private uiUpdateTimer: number | null = null;
 
 
@@ -341,37 +338,16 @@ class CodeCaptureService {
       btn.textContent = 'Extension Disabled';
       return;
     }
-
-    const now = Date.now();
-    const timeElapsed = now - this.lastHintTimestamp;
-    const cooldownMs = 60000; // 60 seconds
-
-    if (timeElapsed < cooldownMs) {
-      const remainingSeconds = Math.ceil((cooldownMs - timeElapsed) / 1000);
-      btn.disabled = true;
-      btn.textContent = `Give Hint (Wait ${remainingSeconds}s)`;
-    } else {
-      // Cooldown is over. Check if code has changed.
-      const currentCode = this.currentEditor.getValue().trim();
-      if (currentCode === this.lastHintCode.trim()) {
-        btn.disabled = true;
-        btn.textContent = 'Write code to enable hint...';
-      } else {
-        btn.disabled = false;
-        btn.textContent = 'Give Hint';
-      }
-    }
+    
+    btn.disabled = false;
+    btn.textContent = 'Get Hint';
   }
 
   private captureSignal(): void {
     if (!this.enabled || !this.currentEditor) return;
 
     try {
-      const code = this.currentEditor.getValue();
-      // Optimization: Skip if code matches last captured.
-      if (code === this.lastCapturedCode) return;
-
-      this.lastCapturedCode = code;
+      const code = this.currentEditor ? this.currentEditor.getValue() : '';
 
       // const problemInfo = this.extractProblemInfo(); // Unused
       const signals = this.extractSignals(code);
@@ -942,7 +918,7 @@ class CodeCaptureService {
           </div>
           <div class="tab-content" id="hints-content">
             <div class="hint-action-container">
-               <button id="codementor-get-hint" class="hint-action-btn" disabled>Give Hint (Wait 60s)</button>
+               <button id="codementor-get-hint" class="hint-action-btn" disabled>Write code to enable hint...</button>
             </div>
             <div class="hints-list" id="hints-list-container">
               <div class="hint-item">
@@ -1000,23 +976,36 @@ class CodeCaptureService {
     if (hintBtn) {
       hintBtn.addEventListener('click', () => {
         if (!this.currentEditor || hintBtn.disabled) return;
-
-        // Disable button immediately to prevent spam
+        
         hintBtn.disabled = true;
         hintBtn.textContent = 'Analyzing...';
-
-        const currentCode = this.currentEditor.getValue().trim();
-        this.lastHintCode = currentCode;
-        this.lastHintTimestamp = Date.now();
-
         this.captureSignal();
       });
     }
+
+    // Handle Tabs
+    const tabBtns = this.overlayContainer.querySelectorAll('.tab-btn');
+    tabBtns.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const target = e.target as HTMLElement;
+        const tab = target.getAttribute('data-tab');
+        if (tab && tab !== 'hints') {
+           alert('Progress and Settings are managed via the CodeMentor Extension Popup and Dashboard!');
+        }
+      });
+    });
   }
 
   private updateHints(analysis: any): void {
     console.log('HINT RESPONSE RECEIVED:', analysis);
     const container = this.overlayContainer?.querySelector('#hints-list-container');
+    const hintBtn = this.overlayContainer?.querySelector('#codementor-get-hint') as HTMLButtonElement | null;
+    
+    if (hintBtn) {
+      hintBtn.disabled = false;
+      hintBtn.textContent = 'Get Hint';
+    }
+    
     if (!container) return;
 
     container.innerHTML = '';

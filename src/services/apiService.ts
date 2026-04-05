@@ -108,7 +108,7 @@ class ApiService {
     try {
       console.log('Detecting problem (REAL API):', problem);
 
-      return await this.makeRequest<{ problemContextId: string }>('/problem/detect', {
+      const response = await this.makeRequest<any>('/problem/detect', {
         method: 'POST',
         body: JSON.stringify({
           title: problem.title,
@@ -117,6 +117,7 @@ class ApiService {
           url: problem.url
         })
       });
+      return { problemContextId: response.data.problemContextId };
 
     } catch (error) {
       console.error('Failed to detect problem:', error);
@@ -135,10 +136,10 @@ class ApiService {
       })
 
       return {
-        hints: response.message ? [{
+        hints: response.data && response.data.message ? [{
           id: Date.now(),
-          type: 'logic',
-          message: response.message,
+          type: response.data.level || 'logic',
+          message: response.data.message,
           severity: 'medium',
           timestamp: Date.now()
         }] : [],

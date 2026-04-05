@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Code2,
@@ -26,9 +26,19 @@ const App: React.FC = () => {
     isEnabled,
     currentProblem,
     progress,
+    settings,
     toggleExtension,
     resetProgress
   } = useExtensionState()
+
+  useEffect(() => {
+    const isDark = settings?.theme === 'dark' || (settings?.theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+    if (isDark) {
+      document.documentElement.classList.add('dark')
+    } else {
+      document.documentElement.classList.remove('dark')
+    }
+  }, [settings?.theme])
 
   const tabs = [
     { id: 'hints' as TabType, label: 'Hints', icon: Lightbulb },
@@ -144,7 +154,9 @@ const App: React.FC = () => {
               <span>Reset</span>
             </button>
             <a
-              href="#"
+              href="/src/dashboard/index.html"
+              target="_blank"
+              rel="noopener noreferrer"
               className="flex items-center space-x-1.5 hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors"
               title="Open Dashboard"
             >

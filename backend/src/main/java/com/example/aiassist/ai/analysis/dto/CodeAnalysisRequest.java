@@ -33,4 +33,7 @@ public class CodeAnalysisRequest {
     @JsonProperty("signalVector")
     @NotNull(message = "Signal vector is required")
     private SignalVector signalVector;
+
+    @JsonProperty("studentLevel")
+    private String studentLevel;
 }

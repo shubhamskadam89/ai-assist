@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "postbuild": "rm -f dist/popup.html dist/overlay.html || true",
+    "postbuild": "node copy-manifest.cjs && node -e \"const fs=require('fs'); ['dist/popup.html', 'dist/overlay.html'].forEach(f => { if(fs.existsSync(f)) fs.unlinkSync(f) })\"",
     "preview": "vite preview",
     "zip": "cd dist && zip -r ../codementor-extension.zip ."
   },

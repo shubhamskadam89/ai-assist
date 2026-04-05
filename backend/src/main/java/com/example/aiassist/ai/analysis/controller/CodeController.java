@@ -8,7 +8,7 @@ import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/v1/analysis")
+@RequestMapping("/api/code")
 @CrossOrigin(origins = "*")
 public class CodeController {
 
@@ -18,7 +18,7 @@ public class CodeController {
         this.service = service;
     }
 
-    @PostMapping
+    @PostMapping("/analyze")
     public ApiResponse<CodeAnalysisResponse> analyze(
             @Valid @RequestBody CodeAnalysisRequest request) {
 

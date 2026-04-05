@@ -80,8 +80,34 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       const { code, language, problemId } = message.data || {}
         ; (async () => {
           try {
-            const analysis = await apiService.analyzeCodeLegacy(code, language, problemId)
-            sendResponse(analysis)
+            const store = await chrome.storage.local.get(['problemContextMap']);
+            const map = store.problemContextMap || {};
+            const contextId = map[problemId];
+
+            if (!contextId) {
+                const legacy = await apiService.analyzeCodeLegacy(code, language, problemId);
+                sendResponse(legacy);
+                return;
+            }
+
+            const req = {
+                sessionId: 'session-' + Date.now(),
+                problemContextId: contextId,
+                language: language,
+                rawCode: code,
+                studentLevel: store.settings?.studentLevel || 'intermediate',
+                signalVector: {
+                    hasRecursion: false,
+                    hasDPArray: false,
+                    hasMemo: false,
+                    usesSort: false,
+                    usesHashMap: false,
+                    loopDepth: 0
+                }
+            };
+            const analysis = await apiService.analyzeCode(req);
+            await chrome.storage.local.set({ latestHints: analysis.hints || [] });
+            sendResponse(analysis);
           } catch (e) {
             console.error('SEND_CODE_TO_AI failed:', e)
             sendResponse(null)
@@ -154,7 +180,15 @@ function handleProblemCapture(data: any) {
       const map = result.problemContextMap || {};
       const key = getProblemKey(data.url);
       map[key] = response.problemContextId;
-      chrome.storage.local.set({ problemContextMap: map });
+      chrome.storage.local.set({ 
+        problemContextMap: map,
+        currentProblem: {
+          id: key,
+          title: data.title,
+          language: 'auto',
+          platform: data.platform
+        }
+      });
     });
 
   }).catch(err => {
@@ -185,11 +219,11 @@ function handleCodeUpdate(data: any, tabId?: number) {
       signalVector: data.signalVector
     };
 
-    apiService.analyzeCode(updateRequest).then(response => {
+    apiService.analyzeCode(updateRequest).then(async response => {
       console.log('Received analysis response from backend:', response);
 
-      // ⭐ STORE HINTS FOR POPUP
-      chrome.storage.local.set({ latestHints: response.hints || [] });
+      // ⭐ STORE HINTS FOR POPUP (with history)
+      await saveHintsToStorage(response, data.title || data.url || 'Unknown Problem');
 
       if (tabId !== undefined && tabId !== null) {
         console.log('SENDING HINT_UPDATE TO TAB ID:', tabId, 'Data:', response);
@@ -210,6 +244,39 @@ function handleCodeUpdate(data: any, tabId?: number) {
       console.error('Error in analyzeCode promise chain:', err);
     });
   });
+}
+
+// ⭐ Helper: save structured hints + append to persistent history
+async function saveHintsToStorage(analysis: any, problemTitle: string) {
+  const hints = (analysis?.hints || []).map((h: any, i: number) => ({
+    id: Date.now() + i,
+    message: typeof h === 'string' ? h : h.message || '',
+    type: h.type || 'logic',
+    severity: h.severity || 'medium',
+    timestamp: Date.now(),
+    problemTitle
+  }));
+
+  // Save as latestHints
+  await chrome.storage.local.set({ latestHints: hints });
+
+  // Append to hintHistory (keep last 50)
+  const stored = await chrome.storage.local.get(['hintHistory']);
+  const history: any[] = stored.hintHistory || [];
+  const updated = [...hints, ...history].slice(0, 50);
+  await chrome.storage.local.set({ hintHistory: updated });
+
+  // Update progress: increment hintsUsed count for this problem
+  const progressStore = await chrome.storage.local.get(['userProgress', 'currentProblem']);
+  const userProgress = progressStore.userProgress || {};
+  const cp = progressStore.currentProblem;
+  if (cp?.id) {
+    const existing = userProgress[cp.id] || { attempts: 0, hintsUsed: [], timeSpent: 0, lastAttempt: null, solved: false, difficulty: 'unknown' };
+    existing.hintsUsed = [...(existing.hintsUsed || []), Date.now()];
+    existing.lastAttempt = Date.now();
+    userProgress[cp.id] = existing;
+    await chrome.storage.local.set({ userProgress });
+  }
 }
 
 // Handle progress saving
